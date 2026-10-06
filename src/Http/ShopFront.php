@@ -250,6 +250,25 @@ final class ShopFront
                 'csrf' => $this->app->csrf->field(),
             ]);
         });
+        $r->add('GET', '#^/orders/(\d+)/result$#', function (Request $req, array $m) {
+            if ($deny = $this->needUser()) {
+                return $deny;
+            }
+            try {
+                $order = $this->checkout()->owned($this->app->auth->user()['id'], (int) $m[1]);
+            } catch (DomainException) {
+                return $this->app->page('store/not-found', ['title' => 'Not found'], 404);
+            }
+            $flash = $_SESSION['flash_delivery_tokens'] ?? [];
+            unset($_SESSION['flash_delivery_tokens']);
+            return $this->app->page('store/payment-result', [
+                'title' => 'Payment result',
+                'order' => $order,
+                'payments' => $this->payments()->forOrder((int) $order['id']),
+                'flash_tokens' => $flash,
+                'user' => $this->app->auth->user(),
+            ]);
+        });
         $r->add('GET', '#^/orders/(\d+)$#', function (Request $req, array $m) {
             if ($deny = $this->needUser()) {
                 return $deny;
@@ -307,7 +326,7 @@ final class ShopFront
             } catch (\Throwable $e) {
                 return Response::html($e->getMessage(), 422);
             }
-            return Response::redirect('/orders/' . $m[1]);
+            return Response::redirect('/orders/' . $m[1] . '/result');
         });
         $r->add('POST', '#^/orders/(\d+)/refund$#', function (Request $req, array $m) {
             if ($deny = $this->needUser()) {
@@ -343,12 +362,48 @@ final class ShopFront
             ]);
         });
         $r->add('GET', '/admin/orders', function () {
-            if (!$this->app->auth->can('order.manage') && !$this->app->auth->can('admin.access')) {
-                return Response::redirect('/admin/login');
+            if ($deny = $this->needAdmin()) {
+                return $deny;
             }
             return $this->app->page('admin/orders', [
                 'title' => 'Orders',
                 'orders' => $this->checkout()->all(),
+                'user' => $this->app->auth->user(),
+            ]);
+        });
+        $r->add('GET', '#^/admin/orders/(\d+)$#', function (Request $req, array $m) {
+            if ($deny = $this->needAdmin()) {
+                return $deny;
+            }
+            try {
+                $order = $this->checkout()->byId((int) $m[1]);
+            } catch (DomainException) {
+                return $this->app->page('store/not-found', ['title' => 'Not found'], 404);
+            }
+            return $this->app->page('admin/order', [
+                'title' => 'Order ' . $order['public_id'],
+                'order' => $order,
+                'items' => $this->checkout()->items((int) $order['id']),
+                'payments' => $this->payments()->forOrder((int) $order['id']),
+                'user' => $this->app->auth->user(),
+            ]);
+        });
+        $r->add('GET', '/admin/payments', function () {
+            if ($deny = $this->needAdmin()) {
+                return $deny;
+            }
+            return $this->app->page('admin/payments', [
+                'title' => 'Payments',
+                'payments' => $this->payments()->all(),
+                'user' => $this->app->auth->user(),
+            ]);
+        });
+        $r->add('GET', '/admin/refunds', function () {
+            if ($deny = $this->needAdmin()) {
+                return $deny;
+            }
+            return $this->app->page('admin/refunds', [
+                'title' => 'Refunds',
                 'refunds' => $this->refunds()->all(),
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
@@ -362,7 +417,7 @@ final class ShopFront
                 return Response::html('Invalid form', 400);
             }
             $this->refunds()->decide((int) $m[1], $m[2], $this->app->auth->user()['id'] ?? null);
-            return Response::redirect('/admin/orders');
+            return Response::redirect('/admin/refunds');
         });
     }
 
@@ -375,6 +430,14 @@ final class ShopFront
             'notice' => $notice,
             'user' => $this->app->auth->user(),
         ], $status);
+    }
+
+    private function needAdmin(): ?Response
+    {
+        if (!$this->app->auth->can('admin.access') && !$this->app->auth->can('order.manage')) {
+            return Response::redirect('/admin/login');
+        }
+        return null;
     }
 
     private function needUser(): ?Response

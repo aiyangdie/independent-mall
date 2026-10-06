@@ -11,7 +11,7 @@
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar">
     <a class="brand" href="/"><?= $e($shop_name) ?></a>
-    <nav>
+    <nav aria-label="Primary">
         <a href="/">Catalog</a>
         <form class="search" action="/search" method="get" role="search">
             <label class="visually-hidden" for="q">Search listings</label>

@@ -102,6 +102,10 @@ final class Refunds
      */
     public function all(): array
     {
-        return $this->pdo->query('SELECT * FROM refunds ORDER BY id DESC')->fetchAll() ?: [];
+        return $this->pdo->query(
+            'SELECT r.*, o.public_id, o.status AS order_status
+             FROM refunds r JOIN orders o ON o.id = r.order_id
+             ORDER BY r.id DESC'
+        )->fetchAll() ?: [];
     }
 }

@@ -52,9 +52,9 @@ if ($st !== 404) {
     fwrite(STDERR, "missing category expected 404 got $st\n");
     exit(1);
 }
-[$st] = fetchStore($base . '/admin/customers', $cookie);
+[$st] = fetchStore($base . '/admin/payments', $cookie);
 if ($st !== 302) {
-    fwrite(STDERR, "guest customers expected 302 got $st\n");
+    fwrite(STDERR, "guest payments expected 302 got $st\n");
     exit(1);
 }
 echo "HTTP storefront smoke ok\n";

@@ -222,7 +222,7 @@ final class Kernel
             $catalog = $this->catalog();
             $category = $catalog->categoryBySlug($m[1]);
             if ($category === null) {
-                return Response::html('Not found', 404);
+                return $this->page('store/not-found', ['title' => 'Not found'], 404);
             }
             return $this->page('store/category', [
                 'title' => $category['name'],
@@ -235,7 +235,7 @@ final class Kernel
             $catalog = $this->catalog();
             $product = $catalog->productBySlug($m[1]);
             if ($product === null || $product['status'] !== 'active') {
-                return Response::html('Not found', 404);
+                return $this->page('store/not-found', ['title' => 'Not found'], 404);
             }
             return $this->page('store/product', [
                 'title' => $product['name'],
@@ -252,7 +252,7 @@ final class Kernel
             $catalog = $this->catalog();
             $product = $catalog->productBySlug($m[1]);
             if ($product === null) {
-                return Response::html('Not found', 404);
+                return $this->page('store/not-found', ['title' => 'Not found'], 404);
             }
             $catalog->report((int) $product['id'], $request->post('reason', 'other'), $request->post('detail'));
             return Response::redirect('/p/' . $m[1]);
@@ -260,7 +260,7 @@ final class Kernel
         $this->router->add('GET', '#^/media/([a-f0-9]{32}\.(jpg|png|webp))$#', function (Request $request, array $m) {
             $path = $this->images()->pathFor($m[1]);
             if ($path === null) {
-                return Response::html('Not found', 404);
+                return $this->page('store/not-found', ['title' => 'Not found'], 404);
             }
             $mime = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'][pathinfo($path, PATHINFO_EXTENSION)] ?? 'application/octet-stream';
             return Response::file($path, $mime);

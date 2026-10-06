@@ -38,6 +38,8 @@ th, td { border: 1px solid #d9d3c7; padding: 0.5rem; vertical-align: top; text-a
 td form { display: inline-block; margin: 0.15rem 0.15rem 0 0; }
 .alert { color: var(--danger); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
+.table-wrap { overflow-x: auto; }
+button { min-height: 2.5rem; padding: 0.4rem 0.75rem; }
+a:focus, button:focus, input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 dt { color: var(--muted); font-size: 0.85rem; }
 dd { margin: 0.2rem 0 0; font-weight: 600; }

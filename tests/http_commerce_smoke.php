@@ -123,8 +123,13 @@ $orderId = $om[1];
     '_csrf' => csrf($order),
     'outcome' => 'succeeded',
 ]);
-if ($st !== 302) {
-    fwrite(STDERR, "pay failed $st\n");
+if ($st !== 302 || !preg_match('#Location:\s*/orders/\d+/result#i', $hdr)) {
+    fwrite(STDERR, "pay failed $st $hdr\n");
+    exit(1);
+}
+[$st, , $result] = fetch($base . '/orders/' . $orderId . '/result', $cookieHeader);
+if ($st !== 200 || !str_contains($result, 'Payment result')) {
+    fwrite(STDERR, "payment result page failed $st\n");
     exit(1);
 }
 [$st, , $paid] = fetch($base . '/orders/' . $orderId, $cookieHeader);

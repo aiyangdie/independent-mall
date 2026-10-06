@@ -53,7 +53,7 @@ final class AdminOpsTest extends TestCase
 
     public function testGuestAdminPagesRedirect(): void
     {
-        foreach (['/admin/customers', '/admin/settings', '/admin/skus', '/admin/audit'] as $path) {
+        foreach (['/admin/customers', '/admin/settings', '/admin/skus', '/admin/audit', '/admin/payments', '/admin/refunds'] as $path) {
             $res = $this->kernel->handle(new Request('GET', $path, [], [], [], []));
             $this->assertSame(302, $res->status(), $path);
             $this->assertSame('/admin/login', $res->header('Location'));
@@ -84,6 +84,12 @@ final class AdminOpsTest extends TestCase
         $this->assertStringContainsString('North Harbor Goods', $page->body());
         $skus = $this->kernel->handle(new Request('GET', '/admin/skus', [], [], [], []));
         $this->assertSame(200, $skus->status());
+        $payments = $this->kernel->handle(new Request('GET', '/admin/payments', [], [], [], []));
+        $this->assertSame(200, $payments->status());
+        $this->assertStringContainsString('Fake adapter only', $payments->body());
+        $refunds = $this->kernel->handle(new Request('GET', '/admin/refunds', [], [], [], []));
+        $this->assertSame(200, $refunds->status());
+        $this->assertStringContainsString('Refunds', $refunds->body());
     }
 
     public function testCannotLockAdministratorFromCustomerScreen(): void

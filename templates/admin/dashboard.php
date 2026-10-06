@@ -10,7 +10,7 @@ ob_start();
         <div><dt>Database</dt><dd><?= $e($health['database'] ?? '') ?></dd></div>
         <div><dt>PHP</dt><dd><?= $e($health['php'] ?? '') ?></dd></div>
     </dl>
-    <p><a href="/admin/products">Products</a> · <a href="/admin/skus">SKUs</a> · <a href="/admin/categories">Categories</a> · <a href="/admin/orders">Orders</a> · <a href="/admin/customers">Customers</a> · <a href="/admin/rules">Prohibited rules</a> · <a href="/admin/settings">Settings</a> · <a href="/admin/audit">Audit</a></p>
+    <p><a href="/admin/products">Products</a> · <a href="/admin/skus">SKUs</a> · <a href="/admin/categories">Categories</a> · <a href="/admin/orders">Orders</a> · <a href="/admin/payments">Payments</a> · <a href="/admin/refunds">Refunds</a> · <a href="/admin/customers">Customers</a> · <a href="/admin/rules">Prohibited rules</a> · <a href="/admin/settings">Settings</a> · <a href="/admin/audit">Audit</a></p>
     <form method="post" action="/admin/logout">
         <?= $csrf ?>
         <button type="submit">Sign out</button>

@@ -8,7 +8,7 @@ ob_start();
     <p><?= $e($product['summary']) ?></p>
     <p><?= nl2br($e($product['description'])) ?></p>
     <?php foreach ($images as $img): ?>
-        <p><img src="/media/<?= $e($img['storage_key']) ?>" alt="" width="320"></p>
+        <p><img src="/media/<?= $e($img['storage_key']) ?>" alt="<?= $e($product['name']) ?>" width="320"></p>
     <?php endforeach; ?>
     <h2>Options</h2>
     <?php foreach ($variants as $v): ?>
