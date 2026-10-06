@@ -23,9 +23,13 @@ Community Edition is a working shop. Commercial Edition is extra packages under 
 - Auto-update that executes downloaded PHP
 - Multi-store / SaaS control plane
 
-## Commercial packages (later)
+## Commercial packages
 
-Each package declares entitlements it needs (`multi_store`, `advanced_stats`, …). The commercial host checks a locally verified license document. Failure: the package is inactive; Community routes stay up; admin sees a repair message.
+Each package lives under `modules/<name>/` with a `module.php` entry that returns an `IndependentMall\Modules\Module`. Community Core discovers those files; it does not Composer-autoload commercial classes.
+
+Entitlements (for example `storefront_notice`) are checked with a **local** license document. This repository ships `AbsentLicense` (deny paid entitlements) plus a test-only allow-list. There is no license private key in Community Core or in the sample plugin.
+
+Failure mode: the package stays inactive; Community routes stay up; `/admin/modules` shows a repair message. Deleting `modules/commercial` must not break `vendor/bin/phpunit`.
 
 ## License server
 

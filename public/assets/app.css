@@ -25,7 +25,7 @@ nav a { margin-left: 0; color: var(--accent); }
   .search input { width: 100%; }
 }
 main { width: min(960px, calc(100% - 2rem)); margin: 2rem auto; flex: 1; }
-.hero { margin-bottom: 2rem; }
+.notice { background: #e7f2ee; border: 1px solid #0f5c4c; padding: 0.75rem 1rem; }
 .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .card, .narrow { background: var(--card); padding: 1.25rem; border: 1px solid #d9d3c7; }
 .narrow { max-width: 28rem; }

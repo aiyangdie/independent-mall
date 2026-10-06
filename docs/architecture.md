@@ -26,7 +26,7 @@ templates/       Views
 docs/            Design and legal drafts
 ```
 
-HTTP enters `public/index.php` → `Kernel` loads config, PDO, session, CSRF, router. Domain modules (`Auth`, `Catalog`, `Checkout`, `Payment`, `Fulfillment`, `Mail`) expose small interfaces. Storefront HTTP for accounts/cart/orders lives in `Http\ShopFront`. Adapters: `NullMailer` / `ArrayMailer`, `FakePaymentGateway`. Real payment, SMTP, and OAuth stay off until the deployer supplies credentials.
+HTTP enters `public/index.php` → `Kernel` loads config, PDO, session, CSRF, router. Domain modules (`Auth`, `Catalog`, `Checkout`, `Payment`, `Fulfillment`, `Mail`, `Modules`) expose small interfaces. Optional add-ons are loaded only from `modules/*/module.php`. Storefront HTTP for accounts/cart/orders lives in `Http/ShopFront`. Adapters: `NullMailer` / `ArrayMailer`, `FakePaymentGateway`. Real payment, SMTP, and OAuth stay off until the deployer supplies credentials.
 
 See `docs/order-state-machine.md` and `docs/api.md`.
 

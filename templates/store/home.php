@@ -2,6 +2,9 @@
 $products = $products ?? [];
 ob_start();
 ?>
+<?php if (!empty($notice)): ?>
+    <p class="notice" role="status"><?= $e($notice) ?></p>
+<?php endif; ?>
 <section class="hero">
     <h1>Goods and services for lawful trade</h1>
     <p>Physical products, licensed digital goods, memberships, and professional services. Listings that promote fraud, infringement, cheats, or unofficial virtual items are blocked by policy.</p>

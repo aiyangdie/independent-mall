@@ -17,6 +17,8 @@ use IndependentMall\Catalog\ImageStore;
 use IndependentMall\Catalog\ProductCatalog;
 use IndependentMall\Catalog\ProhibitedGoodsPolicy;
 use IndependentMall\Install\Installer;
+use IndependentMall\Modules\AbsentLicense;
+use IndependentMall\Modules\ModuleHost;
 use IndependentMall\Http\Csrf;
 use IndependentMall\Http\ShopFront;
 use IndependentMall\Http\Request;
@@ -221,6 +223,8 @@ final class Kernel
             'php' => PHP_VERSION,
             'database' => $db,
             'installed' => (new Installer($this->config->root()))->isInstalled(),
+            'modules' => count($this->modules()->modules()),
+            'module_faults' => count($this->modules()->faults()),
         ];
     }
 
@@ -250,6 +254,11 @@ final class Kernel
         );
     }
 
+    private function modules(): ModuleHost
+    {
+        return new ModuleHost($this->pdo, $this->config->root(), new AbsentLicense(), new AuditLogger($this->pdo));
+    }
+
     private function catalog(): ProductCatalog
     {
         return new ProductCatalog($this->pdo, new ProhibitedGoodsPolicy($this->pdo), new AuditLogger($this->pdo));
@@ -276,6 +285,7 @@ final class Kernel
                 'title' => 'Independent Mall',
                 'products' => $catalog->storefrontProducts(),
                 'categories' => $catalog->categories(),
+                'notice' => $this->modules()->storefrontNotice(),
             ]);
         });
         $this->router->add('GET', '/search', function (Request $request) {
@@ -569,6 +579,44 @@ final class Kernel
                 ], 422);
             }
             return Response::redirect('/admin/settings');
+        });
+        $this->router->add('GET', '/admin/modules', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            $host = $this->modules();
+            $rows = [];
+            foreach ($host->modules() as $module) {
+                $rows[] = $host->snapshot($module);
+            }
+            return $this->page('admin/modules', [
+                'title' => 'Modules',
+                'modules' => $rows,
+                'faults' => $host->faults(),
+                'csrf' => $this->csrf->field(),
+                'error' => '',
+                'user' => $this->auth->user(),
+            ]);
+        });
+        $this->router->add('POST', '#^/admin/modules/([a-z0-9-]+)/(migrate|enable|disable|uninstall)$#', function (Request $request, array $m) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $actor = $this->auth->user()['id'] ?? null;
+            try {
+                match ($m[2]) {
+                    'migrate' => $this->modules()->migrate($m[1], $actor),
+                    'enable' => $this->modules()->enable($m[1], $actor),
+                    'disable' => $this->modules()->disable($m[1], $actor),
+                    'uninstall' => $this->modules()->uninstall($m[1], $actor),
+                };
+            } catch (\Throwable $e) {
+                return Response::html($e->getMessage(), 422);
+            }
+            return Response::redirect('/admin/modules');
         });
     }
 

@@ -53,7 +53,7 @@ final class AdminOpsTest extends TestCase
 
     public function testGuestAdminPagesRedirect(): void
     {
-        foreach (['/admin/customers', '/admin/settings', '/admin/skus', '/admin/audit', '/admin/payments', '/admin/refunds'] as $path) {
+        foreach (['/admin/customers', '/admin/settings', '/admin/skus', '/admin/audit', '/admin/payments', '/admin/refunds', '/admin/modules'] as $path) {
             $res = $this->kernel->handle(new Request('GET', $path, [], [], [], []));
             $this->assertSame(302, $res->status(), $path);
             $this->assertSame('/admin/login', $res->header('Location'));

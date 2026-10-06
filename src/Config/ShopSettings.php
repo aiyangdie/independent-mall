@@ -42,6 +42,18 @@ final class ShopSettings
 
     public function put(string $key, string $value, ?int $actorId): void
     {
+        if (preg_match('/^module\.[a-z0-9-]+\.enabled$/', $key) === 1) {
+            if ($value !== '0' && $value !== '1') {
+                throw new DomainException('Module flags must be 0 or 1.');
+            }
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO system_settings (key, value, updated_at) VALUES (:k, :v, :t)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at'
+            );
+            $stmt->execute(['k' => $key, 'v' => $value, 't' => gmdate('c')]);
+            $this->audit?->record($actorId, 'settings.update', 'setting', $key);
+            return;
+        }
         if (!in_array($key, self::KEYS, true)) {
             throw new DomainException('Unknown setting.');
         }
