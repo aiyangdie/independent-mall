@@ -7,7 +7,7 @@ Local tree `codex/community-core`, PHP 8.5.10, 2026-10-06:
 - [x] `vendor/bin/phpunit` pass on PHP 8.2+ (this machine: 8.5.10). Full empty-host `composer install` not re-run this round.
 - [x] Empty-directory install via `Installer` succeeds once and refuses a second run (`tests/InstallerTest.php`). Live `php bin/console install` on an already-installed clone is expected to refuse.
 - [x] `migrate` is a no-op on a freshly installed schema and applies when a new `database/migrations/*.sql` file is added (same test).
-- [ ] HTTP smoke: register → cart → fake pay → refund (`tests/http_commerce_smoke.php`) against a local server — run when `:8090` is this Community shop.
+- [x] HTTP smoke: register → cart → fake pay → refund (`tests/http_commerce_smoke.php`) against `http://127.0.0.1:8090/` (this Community shop, PHP 8.5.10). Storefront smoke also passed. Order id 5 in the local demo database.
 - [x] `/healthz` unit path shows `"license_required": false` and `"edition": "community"`. Physical “network unplugged” not re-tested this round.
 - [x] `.env` is gitignored. Installer writes a real `APP_KEY` and empty `ADMIN_PASSWORD`.
 - [x] Sample listings come from `DemoSeeder` (lawful/fictional).

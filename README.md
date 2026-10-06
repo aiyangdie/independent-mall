@@ -44,7 +44,11 @@ Ops: `docs/ops.md`. Upgrade/rollback: migrate then restore backups. Release: `do
 
 ```bat
 vendor\bin\phpunit
+php tests\http_storefront_smoke.php
+php tests\http_commerce_smoke.php
 ```
+
+HTTP scripts expect the Community shop at `http://127.0.0.1:8090/` (`/healthz` must show `"edition":"community"`).
 
 ## License
 
