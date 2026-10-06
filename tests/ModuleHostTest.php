@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IndependentMall\Tests;
 
 use DomainException;
+use IndependentMall\Auth\AdminProvisioner;
 use IndependentMall\Auth\PasswordHasher;
 use IndependentMall\Auth\RateLimiter;
 use IndependentMall\Auth\SessionAuth;
@@ -15,6 +16,7 @@ use IndependentMall\Http\Csrf;
 use IndependentMall\Http\Request;
 use IndependentMall\Http\Router;
 use IndependentMall\Kernel;
+use IndependentMall\LicenseServer\Signer;
 use IndependentMall\Modules\AllowListLicense;
 use IndependentMall\Modules\AbsentLicense;
 use IndependentMall\Modules\ModuleHost;
@@ -135,5 +137,76 @@ final class ModuleHostTest extends TestCase
         $payload = json_decode($health->body(), true);
         $this->assertFalse($payload['license_required']);
         $this->assertFalse($payload['network_required']);
+    }
+
+    public function testKernelEnablesSampleNoticeFromSignedLocalLicense(): void
+    {
+        if (!is_file($this->root . '/modules/commercial/module.php')) {
+            $this->markTestSkipped('sample commercial tree is optional');
+        }
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        $_SESSION = [];
+        $tmp = sys_get_temp_dir() . '/im-fgate-' . bin2hex(random_bytes(3));
+        mkdir($tmp . '/var', 0775, true);
+        mkdir($tmp . '/modules/commercial/src', 0775, true);
+        foreach (['module.php', 'autoload.php', 'README.md'] as $name) {
+            copy($this->root . '/modules/commercial/' . $name, $tmp . '/modules/commercial/' . $name);
+        }
+        copy(
+            $this->root . '/modules/commercial/src/SampleNoticeModule.php',
+            $tmp . '/modules/commercial/src/SampleNoticeModule.php',
+        );
+        file_put_contents($tmp . '/.env', "APP_KEY=test-file-gate\nLICENSE_SERVER_URL=\n");
+        $auth = new SessionAuth($this->pdo, new PasswordHasher(), new RateLimiter($this->pdo), new AuditLogger($this->pdo), 'k');
+        $auth->start(sys_get_temp_dir() . '/im-fgate-sess-' . bin2hex(random_bytes(3)), 'imf', 3600, false);
+        $csrf = new Csrf();
+        $token = $csrf->token();
+        $kernel = new Kernel(Config::load($tmp), $this->pdo, $auth, $csrf, new Renderer($this->root . '/templates'), new Router());
+        (new AdminProvisioner($this->pdo, new PasswordHasher()))->create('ops@example.invalid', 'ops', 'correct-horse-battery');
+        $this->assertTrue($auth->login('ops@example.invalid', 'correct-horse-battery', '127.0.0.1'));
+
+        $denied = $kernel->handle(new Request('POST', '/admin/modules/sample-notice/enable', [], ['_csrf' => $token], [], []));
+        $this->assertSame(422, $denied->status());
+        $this->assertStringContainsString('entitlement', $denied->body());
+
+        $pair = Signer::generateKeypair();
+        $now = time();
+        $envelope = Signer::sign([
+            'license_id' => 'lic_kernel',
+            'instance_id' => 'shop-test',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $now),
+            'last_refresh_at' => gmdate('c', $now),
+            'expires_at' => gmdate('c', $now + 86400),
+            'grace_days' => 14,
+            'revoked' => false,
+        ], $pair['private']);
+        $stored = $kernel->handle(new Request('POST', '/admin/license', [], [
+            '_csrf' => $token,
+            'license_json' => (string) json_encode($envelope),
+            'public_pem' => $pair['public'],
+        ], [], []));
+        $this->assertSame(302, $stored->status());
+        $this->assertSame('/admin/modules', $stored->header('Location'));
+
+        $migrate = $kernel->handle(new Request('POST', '/admin/modules/sample-notice/migrate', [], ['_csrf' => $token], [], []));
+        $this->assertSame(302, $migrate->status());
+        $enable = $kernel->handle(new Request('POST', '/admin/modules/sample-notice/enable', [], ['_csrf' => $token], [], []));
+        $this->assertSame(302, $enable->status());
+        $page = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
+        $this->assertStringContainsString('Local entitlement: yes', $page->body());
+        $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
+        $this->assertSame(200, $home->status());
+        $this->assertStringContainsString('Sample commercial notice', $home->body());
+        $this->assertStringContainsString('lawful trade', $home->body());
+        $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
+        $this->assertFalse($health['license_required']);
+        $this->assertFalse($health['network_required']);
+
+        $kernel->handle(new Request('POST', '/admin/modules/sample-notice/disable', [], ['_csrf' => $token], [], []));
+        $off = $kernel->handle(new Request('GET', '/', [], [], [], []));
+        $this->assertStringNotContainsString('Sample commercial notice', $off->body());
     }
 }

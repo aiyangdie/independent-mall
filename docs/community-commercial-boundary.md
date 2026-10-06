@@ -27,7 +27,7 @@ Community Edition is a working shop. Commercial Edition is extra packages under 
 
 Each package lives under `modules/<name>/` with a `module.php` entry that returns an `IndependentMall\Modules\Module`. Community Core discovers those files; it does not Composer-autoload commercial classes.
 
-Entitlements (for example `storefront_notice`) are checked with a **local** license document. This repository ships `AbsentLicense` (deny paid entitlements) plus a test-only allow-list. There is no license private key in Community Core or in the sample plugin.
+Entitlements (for example `storefront_notice`) are checked with a **local** license document. `Kernel` uses `FileLicenseGate::fromRoot()`: missing files become `AbsentLicense` (deny paid entitlements). A signed `var/license.json` plus public PEM, pasted at `/admin/license`, is enough to enable `sample-notice`. Tests may also use an allow-list. There is no license private key in Community Core or in the sample plugin. Storefront requests do not contact a license server.
 
 Failure mode: the package stays inactive; Community routes stay up; `/admin/modules` shows a repair message. Deleting `modules/commercial` must not break `vendor/bin/phpunit`.
 
