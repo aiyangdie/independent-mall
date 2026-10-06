@@ -97,6 +97,24 @@ if ($method === 'POST' && $path === '/refresh') {
     exit;
 }
 
+if ($method === 'POST' && $path === '/renew') {
+    $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    try {
+        $payload = $store->renew(
+            (string) ($body['license_id'] ?? ''),
+            (string) ($body['token'] ?? ''),
+            (string) ($body['expires_at'] ?? ''),
+        );
+        $private = (string) file_get_contents($var . '/private.pem');
+        $doc = Signer::sign($payload, $private);
+        echo json_encode($doc, JSON_UNESCAPED_SLASHES);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($method === 'POST' && $path === '/purge') {
     $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
     try {

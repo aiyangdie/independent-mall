@@ -119,6 +119,52 @@ if ($command === 'revoke') {
     exit(0);
 }
 
+if ($command === 'renew') {
+    $id = '';
+    $token = '';
+    $days = 0;
+    $expires = '';
+    $out = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--id=')) {
+            $id = substr($arg, 5);
+        } elseif (str_starts_with($arg, '--token=')) {
+            $token = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--days=')) {
+            $days = (int) substr($arg, 7);
+        } elseif (str_starts_with($arg, '--expires=')) {
+            $expires = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--out=')) {
+            $out = substr($arg, 6);
+        }
+    }
+    if ($id === '' || $token === '' || ($days < 1 && $expires === '')) {
+        fwrite(STDERR, "Usage: php bin/license renew --id=lic_1 --token=TOKEN (--days=365|--expires=ISO8601) [--out=license.json]\n");
+        exit(1);
+    }
+    try {
+        $summary = $store->status($id);
+        $baseTs = strtotime((string) $summary['expires_at']);
+        if ($baseTs === false) {
+            throw new DomainException('Current expiry is not acceptable.');
+        }
+        $newExpires = $expires !== '' ? $expires : gmdate('c', $baseTs + $days * 86400);
+        $payload = $store->renew($id, $token, $newExpires);
+        $private = (string) file_get_contents($var . '/private.pem');
+        $doc = json_encode(Signer::sign($payload, $private), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        if ($out !== '') {
+            file_put_contents($out, $doc);
+            echo "Renewed {$id} until {$payload['expires_at']} and wrote {$out}\n";
+        } else {
+            echo $doc, "\n";
+        }
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
 if ($command === 'purge') {
     $id = '';
     $token = '';
@@ -161,5 +207,5 @@ if ($command === 'status') {
     exit(0);
 }
 
-echo "Usage: php bin/license [keys|issue|offline|revoke|purge|status]\n";
+echo "Usage: php bin/license [keys|issue|offline|revoke|renew|purge|status]\n";
 exit(1);

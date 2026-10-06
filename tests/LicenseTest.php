@@ -364,6 +364,35 @@ final class LicenseTest extends TestCase
         }
     }
 
+    public function testRenewExtendsExpiryAndRejectsRevokedOrShorter(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $old = gmdate('c', time() + 86400);
+        $nonce = $store->issue('lic_rnw', 'token-renew-xx', ['storefront_notice'], $old);
+        $store->activate('lic_rnw', 'token-renew-xx', 'host-a', $nonce);
+        $later = gmdate('c', time() + 10 * 86400);
+        $payload = $store->renew('lic_rnw', 'token-renew-xx', $later);
+        $this->assertFalse($payload['revoked']);
+        $this->assertSame(strtotime($later), strtotime((string) $payload['expires_at']));
+        $status = $store->status('lic_rnw');
+        $this->assertSame(strtotime($later), strtotime((string) $status['expires_at']));
+        $this->assertSame('renew', $status['recent_audit'][0]['action']);
+        $this->assertSame(strtotime($old), strtotime((string) ($status['recent_audit'][0]['meta']['previous_expires_at'] ?? '')));
+        $refreshed = $store->refresh('lic_rnw', 'token-renew-xx', 'host-a');
+        $this->assertSame(strtotime($later), strtotime((string) $refreshed['expires_at']));
+        try {
+            $store->renew('lic_rnw', 'token-renew-xx', $old);
+            $this->fail('shorter expiry must fail');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('after the current expiry', $e->getMessage());
+        }
+        $store->revoke('lic_rnw');
+        $this->expectException(\DomainException::class);
+        $store->renew('lic_rnw', 'token-renew-xx', gmdate('c', time() + 20 * 86400));
+    }
+
     public function testStatusIsReadOnlyWithoutSecrets(): void
     {
         $pdo = new \PDO('sqlite::memory:');
@@ -403,6 +432,7 @@ final class LicenseTest extends TestCase
         $http = (string) file_get_contents($root . '/public/index.php');
         $this->assertStringContainsString("bootstrap.php", $http);
         $this->assertStringContainsString('/revoke', $http);
+        $this->assertStringContainsString('/renew', $http);
         $this->assertStringContainsString('/purge', $http);
         $this->assertStringNotContainsString('IndependentMall\\Kernel', $http);
         $this->assertFileExists($this->root() . '/docs/license-server-data.md');

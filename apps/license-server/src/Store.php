@@ -132,6 +132,39 @@ final class Store
     }
 
     /**
+     * Extends expires_at. Requires token. Revoked licenses cannot be renewed.
+     * New expiry must parse as UTC ISO-8601 and be strictly after the current expires_at.
+     *
+     * @return array<string, mixed> Unsigned payload suitable for Signer::sign (shop pulls via refresh)
+     */
+    public function renew(string $id, string $token, string $newExpiresAt): array
+    {
+        $row = $this->requireRow($id, $token);
+        if ((int) $row['revoked'] === 1) {
+            throw new \DomainException('License revoked.');
+        }
+        $newExpiresAt = trim($newExpiresAt);
+        $newTs = strtotime($newExpiresAt);
+        $oldTs = strtotime((string) $row['expires_at']);
+        if ($newTs === false || $oldTs === false) {
+            throw new \DomainException('Expiry timestamp is not acceptable.');
+        }
+        if ($newTs <= $oldTs) {
+            throw new \DomainException('New expiry must be after the current expiry.');
+        }
+        $normalized = gmdate('c', $newTs);
+        $previous = (string) $row['expires_at'];
+        $this->pdo->prepare('UPDATE licenses SET expires_at = :x WHERE id = :i')
+            ->execute(['x' => $normalized, 'i' => $id]);
+        $this->audit($id, 'renew', [
+            'previous_expires_at' => $previous,
+            'expires_at' => $normalized,
+        ]);
+        $row['expires_at'] = $normalized;
+        return $this->payloadFromRow($row, false);
+    }
+
+    /**
      * Deletes the license row and its audit rows after token check. Irreversible.
      */
     public function purge(string $id, string $token): void
