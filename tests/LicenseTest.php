@@ -385,6 +385,13 @@ final class LicenseTest extends TestCase
         $this->assertTrue($after['bound']);
         $this->assertSame('shop-status-1', $after['instance_id']);
         $this->assertFalse($after['has_activation_nonce']);
+        $this->assertNotSame([], $after['recent_audit']);
+        $this->assertSame('activate', $after['recent_audit'][0]['action']);
+        $this->assertSame('shop-status-1', $after['recent_audit'][0]['meta']['instance_id'] ?? null);
+        $auditJson = json_encode($after['recent_audit']);
+        $this->assertIsString($auditJson);
+        $this->assertStringNotContainsString('token-status-x', $auditJson);
+        $this->assertStringNotContainsString($nonce, $auditJson);
     }
 
     public function testLicenseServerLoadsFromItsOwnBootstrap(): void

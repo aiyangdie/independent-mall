@@ -34,10 +34,10 @@
 - 阶段 1：配置、迁移、管理员会话、健康检查和测试骨架。
 - 阶段 2：分类、商品、SKU、库存流水、商品审核、禁售规则和安全图片上传。
 - 阶段 3：顾客账户、地址、购物车、订单状态机、Fake 支付、数字交付、退款申请。
-- 阶段 4：前台与后台主流程页面；页脚法律草案链接；CSS 焦点/对比度/reduced-motion 有自动化锚点（真机窄屏目视仍开放）。
+- 阶段 4：前台与后台主流程页面；页脚法律草案链接；注册须勾选条款；CSS 焦点/对比度/reduced-motion 有自动化锚点（真机窄屏目视仍开放）。
 - 阶段 5 进行中：安装器、空树安装冒烟、deploy.md（本机 loopback `/healthz` `network_required=false`；未做网线拔除与物理备用机）。
 - 阶段 6 进行中：模块宿主、`FileLicenseGate`、示例插件；无本地签名文件则无法启用。
-- 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；CLI status；激活 nonce；吊销/purge；仪表盘 License audit。
+- 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；CLI `status --id=` 含 `recent_audit`（无 token/nonce）；激活 nonce；吊销/purge；仪表盘 License audit。
 - 阶段 8 进行中：官网 `/docs` 索引 deploy 与 license-server-data；定价/changelog Fake-only；验签更新检查仍为演示。
 - 已知提交以 `git log` 为准。测试基线随 PHPUnit 输出更新。
 - 社区版不得依赖授权服务器才能启动、登录、浏览或下单。

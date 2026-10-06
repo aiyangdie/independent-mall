@@ -124,4 +124,39 @@ final class AppTest extends TestCase
         $this->assertSame('community', $payload['edition']);
         $this->assertArrayHasKey('installed', $payload);
     }
+
+    public function testRegisterRequiresTermsAcceptance(): void
+    {
+        $pdo = ConnectionFactory::make('sqlite:///:memory:');
+        (new Migrator($pdo, $this->root . '/database/migrations'))->migrate();
+        $config = Config::load($this->root);
+        $auth = new SessionAuth($pdo, new PasswordHasher(), new RateLimiter($pdo), new AuditLogger($pdo), 'test-key');
+        $sess = sys_get_temp_dir() . '/im-reg-' . bin2hex(random_bytes(3));
+        $auth->start($sess, 'imr', 3600, false);
+        $csrf = new Csrf();
+        $token = $csrf->token();
+        $kernel = new Kernel($config, $pdo, $auth, $csrf, new Renderer($this->root . '/templates'), new Router());
+        $form = $kernel->handle(new Request('GET', '/register', [], [], [], []));
+        $this->assertSame(200, $form->status());
+        $this->assertStringContainsString('accept_terms', $form->body());
+        $this->assertStringContainsString('/legal/disclaimer', $form->body());
+        $this->assertStringContainsString('/legal/prohibited', $form->body());
+        $denied = $kernel->handle(new Request('POST', '/register', [], [
+            '_csrf' => $token,
+            'email' => 'newbie@example.invalid',
+            'username' => 'newbie1',
+            'password' => 'correct-horse-1',
+        ], [], []));
+        $this->assertSame(422, $denied->status());
+        $this->assertStringContainsString('Accept the draft terms', $denied->body());
+        $ok = $kernel->handle(new Request('POST', '/register', [], [
+            '_csrf' => $token,
+            'email' => 'newbie@example.invalid',
+            'username' => 'newbie1',
+            'password' => 'correct-horse-1',
+            'accept_terms' => '1',
+        ], [], []));
+        $this->assertSame(302, $ok->status());
+        $this->assertSame('/account', $ok->header('Location'));
+    }
 }

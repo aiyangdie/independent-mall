@@ -62,11 +62,16 @@ if ($st !== 200 || ($json['license_required'] ?? true) !== false || ($json['netw
 
 $email = 'buyer' . bin2hex(random_bytes(3)) . '@example.invalid';
 [$st, , $reg] = fetch($base . '/register', $cookieHeader);
+if ($st !== 200 || !str_contains($reg, 'accept_terms') || !str_contains($reg, '/legal/disclaimer')) {
+    fwrite(STDERR, "register form missing terms checkbox\n");
+    exit(1);
+}
 [$st, $hdr, $body] = post($base . '/register', $cookieHeader, [
     '_csrf' => csrf($reg),
     'email' => $email,
     'username' => 'u' . substr(bin2hex(random_bytes(4)), 0, 8),
     'password' => 'correct-horse-1',
+    'accept_terms' => '1',
 ]);
 if ($st !== 302) {
     fwrite(STDERR, "register failed $st $body\n");

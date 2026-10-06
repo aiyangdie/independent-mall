@@ -39,6 +39,14 @@ final class ShopFront
             if (!$this->app->csrf->assert($req)) {
                 return Response::html('Invalid form', 400);
             }
+            if ($req->post('accept_terms') !== '1') {
+                return $this->form(
+                    'account/register',
+                    'Create account',
+                    'Accept the draft terms and disclaimer before creating an account.',
+                    422,
+                );
+            }
             try {
                 $this->accounts()->register($req->post('email'), $req->post('username'), $req->post('password'));
                 $this->app->auth->login($req->post('email'), $req->post('password'), $req->ip());

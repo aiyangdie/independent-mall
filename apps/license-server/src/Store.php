@@ -163,6 +163,23 @@ final class Store
         }
         $ents = json_decode((string) $row['entitlements'], true);
         $instance = (string) ($row['instance_id'] ?? '');
+        $auditStmt = $this->pdo->prepare(
+            'SELECT action, meta, created_at FROM license_audit WHERE license_id = :i ORDER BY id DESC LIMIT 5'
+        );
+        $auditStmt->execute(['i' => $id]);
+        $recent = [];
+        foreach ($auditStmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $entry) {
+            $meta = json_decode((string) ($entry['meta'] ?? '{}'), true);
+            if (!is_array($meta)) {
+                $meta = [];
+            }
+            unset($meta['token'], $meta['nonce'], $meta['token_hash'], $meta['activation_nonce']);
+            $recent[] = [
+                'action' => (string) $entry['action'],
+                'created_at' => (string) $entry['created_at'],
+                'meta' => $meta,
+            ];
+        }
         return [
             'license_id' => (string) $row['id'],
             'bound' => $instance !== '',
@@ -173,6 +190,7 @@ final class Store
             'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
             'created_at' => (string) $row['created_at'],
             'has_activation_nonce' => (string) ($row['activation_nonce_hash'] ?? '') !== '',
+            'recent_audit' => $recent,
         ];
     }
 

@@ -9,7 +9,13 @@ ob_start();
         <label>Email <input type="email" name="email" required autocomplete="email"></label>
         <label>Username <input name="username" required autocomplete="username" pattern="[A-Za-z0-9_]{3,32}"></label>
         <label>Password <input type="password" name="password" required minlength="10" autocomplete="new-password"></label>
-        <p class="muted">By creating an account you accept the draft user terms (lawyer review pending).</p>
+        <label>
+            <input type="checkbox" name="accept_terms" value="1" required>
+            I accept the draft shopper terms and have read the
+            <a href="/legal/disclaimer">disclaimer</a>,
+            <a href="/legal/refunds">refunds</a>, and
+            <a href="/legal/prohibited">prohibited goods</a> notices (counsel has not reviewed these drafts).
+        </label>
         <button type="submit">Register</button>
     </form>
     <p><a href="/login">Already have an account</a></p>
