@@ -18,5 +18,6 @@ Local tree `codex/community-core`, PHP 8.5.10, 2026-10-06:
 - [x] Backup/restore: `php bin/console backup` / `restore --from=` implemented; covered by `testSnapshotBackupAndRestore`.
 - [x] Deploy notes in `docs/deploy.md` (proxy, sessions, what is not signed off).
 - [x] License issuer data inventory and purge path in `docs/license-server-data.md` (counsel still required for public privacy text).
+- [x] Cross-app offline license path covered by `tests/CrossAppLicenseE2ETest.php` (Fake buy → JSON/PEM download → Community import → enable; negatives; commerce still works).
 
-Still not a production sign-off: no clean spare machine, no counsel, no real payment channel.
+Still not a production sign-off: no clean spare machine, no counsel, no real payment channel. See `docs/human-acceptance.md`.

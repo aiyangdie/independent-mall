@@ -38,7 +38,7 @@ php -S 127.0.0.1:8090 -t public public/index.php
 
 Checkout uses the **Fake** payment adapter only. Real card networks are not connected.
 
-Ops: `docs/ops.md`. Upgrade/rollback: migrate then restore backups. Release: `docs/release-checklist.md`. Troubleshooting: `docs/troubleshooting.md`.
+Ops: `docs/ops.md`. Upgrade/rollback: migrate then restore backups. Release: `docs/release-checklist.md`. Human-only sign-off (devices, NIC, counsel): `docs/human-acceptance.md`. Troubleshooting: `docs/troubleshooting.md`.
 
 ## Tests
 

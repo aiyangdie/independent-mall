@@ -12,7 +12,14 @@ How this was checked on the development host (loopback, not a NIC unplug):
 2. `tests/OfflineCoreTest.php` asserts no other `src/` file calls `curl_init`.
 3. PHPUnit boots the kernel with `sqlite:///:memory:` and still serves `/` and `/healthz`.
 
-A physical cable pull was not performed. Equivalence: those paths never open an outbound socket.
+A physical cable pull was not performed. Equivalence: those paths never open an outbound socket. Human NIC/spare-machine checklist: [human-acceptance.md](human-acceptance.md).
+
+## Offline license paste (commercial modules)
+
+1. On OfficialSite (`apps/www`), Fake-buy `sample-notice`, download `license.json` and `license-public.pem` from the account center.
+2. On Community `/admin/modules`, paste both into the offline license form (POST `/admin/license`).
+3. Migrate then enable `sample-notice`. Failure (bad signature, expired, revoked, missing entitlement) leaves core shop unchanged.
+4. Automated: `tests/CrossAppLicenseE2ETest.php`.
 
 ## Install
 

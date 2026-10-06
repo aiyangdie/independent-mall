@@ -5,7 +5,7 @@
 </p>
 <ol>
     <li>
-        <strong>0.1.1-dev</strong> — Download signed license JSON + public PEM; pricing/docs Fake demo path; admin Modules product/customer; Fake renew orders; tickets; single-use downloads;
+        <strong>0.1.1-dev</strong> — Cross-app E2E (www license download → Community offline import → enable sample-notice); download signed license JSON + public PEM; pricing/docs Fake demo path; admin Modules product/customer; Fake renew orders; tickets; single-use downloads;
         license issuer renew; register terms checkbox; license status recent_audit; purge + data inventory;
         license status (bound/revoked); admin audit action filter; pricing Fake-only / counsel callouts;
         focus and reduced-motion CSS anchors; empty-tree install smoke in PHPUnit. Still not a production release.

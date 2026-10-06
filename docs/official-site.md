@@ -13,3 +13,12 @@ Download links are HMAC + expiry (10 minutes). File ids are a whitelist; `realpa
 Customer center lists HMAC downloads, a download audit, and **Check updates** (`GET /account/updates`) which verifies signed metadata and refuses to apply files.
 
 Legal drafts on `/legal/refunds`, `/legal/prohibited`, and `/legal/disclaimer` point at `docs/legal/` and state they are not counsel-reviewed.
+
+## Offline license handoff (automated)
+
+After Fake buy, the account center links to:
+
+- `GET /account/license.json?id=lic_…` — signed Ed25519 envelope (no long-lived token)
+- `GET /account/license-public.pem` — public key for Community paste
+
+Paste both into Community `/admin/modules` (POST `/admin/license`). Ownership is enforced; guests get 401; foreign ids get 400. End-to-end coverage: `tests/CrossAppLicenseE2ETest.php`. Manual ops notes: `docs/human-acceptance.md`.

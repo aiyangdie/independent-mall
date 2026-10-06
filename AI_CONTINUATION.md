@@ -38,7 +38,7 @@
 - 阶段 5 进行中：安装器、空树安装冒烟、deploy.md（本机 loopback `/healthz` `network_required=false`；未做网线拔除与物理备用机）。
 - 阶段 6 进行中：模块宿主、`FileLicenseGate`、示例插件；`/admin/modules` 展示本地许可证 product/customer；无本地签名文件则无法启用。
 - 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；B2B `customers`；Fake `commercial_orders`（`fulfillFakeOrder` / `fulfillFakeRenew`）；CLI `licenses --customer=`；产品/版本目录与 `issueForProduct`；续费 renew；CLI `status --id=` 含 `recent_audit`（无 token/nonce）；激活 nonce；吊销/purge；仪表盘 License audit。
-- 阶段 8 进行中：官网可下载签名许可证 JSON + 公钥 PEM 供 Community `/admin/modules` 离线粘贴；pricing/docs 演示路径；issuer 订单；Fake 购买/续费；工单；单次下载；验签更新检查仍为演示。
+- 阶段 8 进行中：跨应用 E2E（`tests/CrossAppLicenseE2ETest.php`）覆盖官网 Fake 购买 → 下载签名 JSON/PEM → Community `/admin/license` 离线导入 → migrate/enable `sample-notice`，以及篡改/错钥/过期/吊销/无权益与核心下单仍可用；pricing/docs 演示路径；工单；单次下载；验签更新检查仍为演示。真机/NIC/律师/生产密钥见 `docs/human-acceptance.md`（未勾选不得标完成）。
 - 已知提交以 `git log` 为准。测试基线随 PHPUnit 输出更新。
 - 社区版不得依赖授权服务器才能启动、登录、浏览或下单。
 
