@@ -242,6 +242,34 @@ final class Hub
     }
 
     /**
+     * Orders on the license issuer for this account’s B2B customer (matched by email).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function issuerOrdersForAccount(int $userId): array
+    {
+        $customerId = $this->issuerCustomerIdForAccount($userId);
+        if ($customerId === '') {
+            return [];
+        }
+        return $this->store->commercialOrders($customerId);
+    }
+
+    /**
+     * @return string Empty when the account has never been linked to an issuer customer
+     */
+    public function issuerCustomerIdForAccount(int $userId): string
+    {
+        $email = strtolower($this->userEmail($userId));
+        foreach ($this->store->customers() as $row) {
+            if (strtolower((string) $row['email']) === $email) {
+                return (string) $row['id'];
+            }
+        }
+        return '';
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     public function licenses(int $userId): array

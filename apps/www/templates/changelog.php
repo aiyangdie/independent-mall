@@ -5,7 +5,7 @@
 </p>
 <ol>
     <li>
-        <strong>0.1.1-dev</strong> — Fake buy writes issuer customer + commercial_order + sample-notice@1.0.0 license; ticket open→answered→closed; Fake renew; single-use revocable download links;
+        <strong>0.1.1-dev</strong> — Account lists issuer commercial orders; Fake buy writes customer + order + sample-notice@1.0.0 license; ticket open→answered→closed; Fake renew; single-use downloads;
         license issuer renew; register terms checkbox; license status recent_audit; purge + data inventory;
         license status (bound/revoked); admin audit action filter; pricing Fake-only / counsel callouts;
         focus and reduced-motion CSS anchors; empty-tree install smoke in PHPUnit. Still not a production release.

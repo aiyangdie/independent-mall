@@ -494,6 +494,14 @@ final class LicenseTest extends TestCase
         $this->assertSame('cust_ord', $status['customer_id']);
         $this->assertSame('sample-notice', $status['product_code']);
         $this->assertSame('order_fulfill', $status['recent_audit'][0]['action']);
+        $byCustomer = $store->licensesForCustomer('cust_ord');
+        $this->assertCount(1, $byCustomer);
+        $this->assertSame('lic_ord1', $byCustomer[0]['license_id']);
+        $this->assertSame('cust_ord', $byCustomer[0]['customer_id']);
+        $byCustomerJson = json_encode($byCustomer);
+        $this->assertIsString($byCustomerJson);
+        $this->assertStringNotContainsString($token, $byCustomerJson);
+        $this->assertStringNotContainsString($nonce, $byCustomerJson);
         $payload = $store->activate('lic_ord1', $token, 'shop-ord-1', $nonce);
         $this->assertSame('cust_ord', $payload['customer_id']);
         try {

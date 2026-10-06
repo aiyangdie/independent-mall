@@ -348,6 +348,25 @@ final class Store
     }
 
     /**
+     * Read-only license summaries for a B2B customer. Never returns token or nonce material.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function licensesForCustomer(string $customerId): array
+    {
+        $customerId = $this->requireCustomerId($customerId);
+        $stmt = $this->pdo->prepare(
+            'SELECT id FROM licenses WHERE customer_id = :c ORDER BY created_at DESC'
+        );
+        $stmt->execute(['c' => $customerId]);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $out[] = $this->status((string) $row['id']);
+        }
+        return $out;
+    }
+
+    /**
      * Issue a license from a registered product + version. Entitlements come from the product row.
      *
      * @return string One-time activation nonce (not stored in plaintext)

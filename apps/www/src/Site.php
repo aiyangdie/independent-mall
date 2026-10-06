@@ -158,6 +158,8 @@ final class Site
         return $this->page('account', [
             'title' => 'Customer center',
             'orders' => $this->hub->orders($uid),
+            'issuer_orders' => $this->hub->issuerOrdersForAccount($uid),
+            'issuer_customer_id' => $this->hub->issuerCustomerIdForAccount($uid),
             'licenses' => $this->hub->licenses($uid),
             'tickets' => $this->hub->tickets($uid),
             'security' => $this->hub->securityLog($uid),

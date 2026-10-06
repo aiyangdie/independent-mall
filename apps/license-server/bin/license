@@ -358,6 +358,26 @@ if ($command === 'purge') {
     exit(0);
 }
 
+if ($command === 'licenses') {
+    $customer = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--customer=')) {
+            $customer = substr($arg, 11);
+        }
+    }
+    if ($customer === '') {
+        fwrite(STDERR, "Usage: php bin/license licenses --customer=cust_demo\n");
+        exit(1);
+    }
+    try {
+        echo json_encode($store->licensesForCustomer($customer), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), "\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
 if ($command === 'status') {
     $id = '';
     foreach (array_slice($argv, 2) as $arg) {
@@ -378,5 +398,5 @@ if ($command === 'status') {
     exit(0);
 }
 
-echo "Usage: php bin/license [keys|customer|customers|fulfill|orders|product|version|products|issue|offline|revoke|renew|purge|status]\n";
+echo "Usage: php bin/license [keys|customer|customers|fulfill|orders|licenses|product|version|products|issue|offline|revoke|renew|purge|status]\n";
 exit(1);

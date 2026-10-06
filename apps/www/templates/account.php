@@ -14,12 +14,34 @@ $flash = $e((string) ($data['flash'] ?? ''));
 <p>Records a completed Fake order and issues a signed license from the catalog product <code>sample-notice@1.0.0</code>. This is not a real charge.</p>
 <form method="post" action="/account/buy"><?= $csrf->field() ?><button type="submit">Buy sample notice (Fake)</button></form>
 
-<h2>Orders</h2>
+<h2>Site Fake orders</h2>
 <ul>
 <?php foreach ($data['orders'] as $row): ?>
     <li>#<?= (int) $row['id'] ?> <?= $e((string) $row['sku']) ?> <?= $e((string) $row['status']) ?> via <?= $e((string) $row['adapter']) ?></li>
 <?php endforeach; ?>
 </ul>
+
+<h2>Issuer commercial orders</h2>
+<p>Fake bookkeeping on the license issuer (currency <code>XXX</code>). Not a card charge.
+<?php if (($data['issuer_customer_id'] ?? '') !== ''): ?>
+    Customer <code><?= $e((string) $data['issuer_customer_id']) ?></code>.
+<?php endif; ?>
+</p>
+<?php if (empty($data['issuer_orders'])): ?>
+<p>No issuer orders yet. Use Fake purchase above.</p>
+<?php else: ?>
+<ul>
+<?php foreach ($data['issuer_orders'] as $row): ?>
+    <li>
+        <code><?= $e((string) $row['id']) ?></code>
+        · <?= $e((string) $row['product_code']) ?>@<?= $e((string) $row['product_version']) ?>
+        · license <code><?= $e((string) $row['license_id']) ?></code>
+        · <?= (int) $row['amount_minor'] ?> <?= $e((string) $row['currency']) ?>
+        · <?= $e((string) $row['status']) ?> via <?= $e((string) $row['adapter']) ?>
+    </li>
+<?php endforeach; ?>
+</ul>
+<?php endif; ?>
 
 <h2>Licenses</h2>
 <ul>

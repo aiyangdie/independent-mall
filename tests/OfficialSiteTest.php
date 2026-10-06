@@ -141,8 +141,11 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('fake_completed', $account->body());
         $this->assertStringContainsString('sample-notice@1.0.0', $account->body());
         $this->assertStringContainsString('product <code>sample-notice@1.0.0</code>', $account->body());
+        $this->assertStringContainsString('Issuer commercial orders', $account->body());
+        $this->assertStringContainsString('Site Fake orders', $account->body());
         $this->assertMatchesRegularExpression('/customer www_u\d+/', $account->body());
         $this->assertMatchesRegularExpression('/issuer order ord_[a-f0-9]+/', $account->body());
+        $this->assertMatchesRegularExpression('/<code>ord_[a-f0-9]+<\/code>/', $account->body());
         $this->assertMatchesRegularExpression('/lic_[a-f0-9]+/', $account->body());
         preg_match('/License (lic_[a-f0-9]+) token \(shown once\): ([a-f0-9]+) nonce \(shown once\): ([a-f0-9]+)/', $account->body(), $m);
         $this->assertNotEmpty($m);
@@ -156,10 +159,11 @@ final class OfficialSiteTest extends TestCase
         $envBuy = json_decode((string) $docsBuy[0]['document'], true);
         $this->assertSame('sample-notice', $envBuy['payload']['product_code'] ?? null);
         $this->assertSame($docsBuy[0]['customer_id'], $envBuy['payload']['customer_id'] ?? null);
-        $commercial = $this->hub->issuerCommercialOrders((string) $docsBuy[0]['customer_id']);
+        $commercial = $this->hub->issuerOrdersForAccount((int) $_SESSION['www_user']);
         $this->assertNotSame([], $commercial);
         $this->assertSame($licenseId, $commercial[0]['license_id']);
         $this->assertSame('fake_completed', $commercial[0]['status']);
+        $this->assertStringContainsString((string) $commercial[0]['id'], $account->body());
 
         $this->site->handle(new Request('POST', '/account/activate', [], [
             '_csrf' => $token,
