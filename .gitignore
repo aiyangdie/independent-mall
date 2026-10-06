@@ -1,4 +1,5 @@
 /.env
+/var/installed.json
 /var/data/*.sqlite
 /var/data/*.sqlite-journal
 /var/logs/*

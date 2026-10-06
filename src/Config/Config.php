@@ -74,6 +74,9 @@ final class Config
             }
             $key = trim(substr($line, 0, $pos));
             $val = trim(substr($line, $pos + 1));
+            if ($val !== '' && (($val[0] === '"' && str_ends_with($val, '"')) || ($val[0] === "'" && str_ends_with($val, "'")))) {
+                $val = stripcslashes(substr($val, 1, -1));
+            }
             $out[$key] = $val;
         }
         return $out;

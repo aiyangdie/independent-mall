@@ -16,6 +16,7 @@ use IndependentMall\Database\Migrator;
 use IndependentMall\Catalog\ImageStore;
 use IndependentMall\Catalog\ProductCatalog;
 use IndependentMall\Catalog\ProhibitedGoodsPolicy;
+use IndependentMall\Install\Installer;
 use IndependentMall\Http\Csrf;
 use IndependentMall\Http\ShopFront;
 use IndependentMall\Http\Request;
@@ -67,13 +68,85 @@ final class Kernel
      */
     public function page(string $view, array $data = [], int $status = 200): Response
     {
-        $data['shop_name'] = (new ShopSettings($this->pdo))->get('shop_name', 'Independent Mall');
+        try {
+            $data['shop_name'] = (new ShopSettings($this->pdo))->get('shop_name', 'Independent Mall');
+        } catch (\Throwable) {
+            $data['shop_name'] = $data['shop_name'] ?? 'Independent Mall';
+        }
         return Response::html($this->view->render($view, $data), $status);
+    }
+
+    public function handle(Request $request): Response
+    {
+        $installer = new Installer($this->config->root());
+        $path = $request->path();
+        $installTraffic = $path === '/install';
+        if (!$installer->isInstalled() && !$this->schemaReady() && !$installTraffic && $path !== '/healthz') {
+            return Response::redirect('/install');
+        }
+        return $this->router->dispatch($request);
+    }
+
+    private function schemaReady(): bool
+    {
+        try {
+            $n = $this->pdo->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn();
+            return (int) $n > 0;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function registerRoutes(): void
     {
         $this->router->add('GET', '/healthz', fn () => Response::json($this->health()));
+        $this->router->add('GET', '/install', function () {
+            $installer = new Installer($this->config->root());
+            if ($installer->isInstalled()) {
+                return $this->page('install/locked', [
+                    'title' => 'Already installed',
+                ], 409);
+            }
+            return $this->page('install/form', [
+                'title' => 'Install Community Edition',
+                'csrf' => $this->csrf->field(),
+                'error' => '',
+                'checks' => \IndependentMall\Install\Environment::checks($this->config->root()),
+            ]);
+        });
+        $this->router->add('POST', '/install', function (Request $request) {
+            $installer = new Installer($this->config->root());
+            if ($installer->isInstalled()) {
+                return $this->page('install/locked', ['title' => 'Already installed'], 409);
+            }
+            if (!$this->csrf->assert($request)) {
+                return $this->page('install/form', [
+                    'title' => 'Install Community Edition',
+                    'csrf' => $this->csrf->field(),
+                    'error' => 'The form expired. Try again.',
+                    'checks' => \IndependentMall\Install\Environment::checks($this->config->root()),
+                ], 400);
+            }
+            try {
+                $installer->install([
+                    'admin_email' => $request->post('admin_email'),
+                    'admin_username' => $request->post('admin_username', 'admin'),
+                    'admin_password' => $request->post('admin_password'),
+                    'shop_name' => $request->post('shop_name', 'Independent Mall'),
+                    'app_url' => $request->post('app_url', $this->config->get('APP_URL')),
+                    'database_url' => $request->post('database_url', $this->config->get('DATABASE_URL')),
+                    'seed' => $request->post('seed'),
+                ]);
+            } catch (\Throwable $e) {
+                return $this->page('install/form', [
+                    'title' => 'Install Community Edition',
+                    'csrf' => $this->csrf->field(),
+                    'error' => $e->getMessage(),
+                    'checks' => \IndependentMall\Install\Environment::checks($this->config->root()),
+                ], 422);
+            }
+            return Response::redirect('/admin/login');
+        });
         $this->router->add('GET', '/admin/login', function () {
             if ($this->auth->can('admin.access')) {
                 return Response::redirect('/admin');
@@ -147,12 +220,8 @@ final class Kernel
             'license_required' => false,
             'php' => PHP_VERSION,
             'database' => $db,
+            'installed' => (new Installer($this->config->root()))->isInstalled(),
         ];
-    }
-
-    public function handle(Request $request): Response
-    {
-        return $this->router->dispatch($request);
     }
 
     public function migrator(): Migrator

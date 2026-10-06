@@ -57,4 +57,9 @@ if ($st !== 302) {
     fwrite(STDERR, "guest payments expected 302 got $st\n");
     exit(1);
 }
+[$st] = fetchStore($base . '/install', $cookie);
+if ($st !== 409 && $st !== 200) {
+    fwrite(STDERR, "install page expected 409 or 200 got $st\n");
+    exit(1);
+}
 echo "HTTP storefront smoke ok\n";

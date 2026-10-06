@@ -108,5 +108,6 @@ final class AppTest extends TestCase
         $this->assertIsArray($payload);
         $this->assertFalse($payload['license_required']);
         $this->assertSame('community', $payload['edition']);
+        $this->assertArrayHasKey('installed', $payload);
     }
 }

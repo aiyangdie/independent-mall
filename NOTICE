@@ -1,0 +1,8 @@
+NOTICE
+
+This Community Edition depends on:
+
+- PHP 8.2 or later (https://www.php.net/) — PHP License
+- PHPUnit 11 (dev only, https://phpunit.de/) — BSD-3-Clause
+
+Application code in this tree is UNLICENSED until the copyright holder chooses a public license. See LICENSE.md and docs/legal/third-parties.md.

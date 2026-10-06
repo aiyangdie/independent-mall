@@ -10,6 +10,42 @@ $root = dirname(__DIR__);
 require $root . '/vendor/autoload.php';
 
 $command = $argv[1] ?? 'help';
+
+if ($command === 'doctor') {
+    $checks = IndependentMall\Install\Environment::checks($root);
+    foreach ($checks as $row) {
+        echo ($row['ok'] ? 'OK  ' : 'FAIL') . ' ' . $row['label'] . ': ' . $row['detail'] . "\n";
+    }
+    exit(IndependentMall\Install\Environment::allOk($checks) ? 0 : 1);
+}
+
+if ($command === 'install') {
+    $flag = static function (string $name, string $default = '') use ($argv): string {
+        foreach ($argv as $arg) {
+            if (str_starts_with($arg, $name . '=')) {
+                return substr($arg, strlen($name) + 1);
+            }
+        }
+        return $default;
+    };
+    try {
+        (new IndependentMall\Install\Installer($root))->install([
+            'admin_email' => $flag('--email'),
+            'admin_username' => $flag('--username', 'admin'),
+            'admin_password' => $flag('--password'),
+            'shop_name' => $flag('--shop-name', 'Independent Mall'),
+            'app_url' => $flag('--url', 'http://127.0.0.1:8090'),
+            'database_url' => $flag('--database', 'sqlite:///%ROOT%/var/data/app.sqlite'),
+            'seed' => in_array('--seed', $argv, true) ? '1' : '',
+        ]);
+        echo "Installed. Open /admin/login — the password is not stored in .env.\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
 $kernel = Kernel::boot($root, false);
 
 if ($command === 'migrate') {
@@ -33,24 +69,9 @@ if ($command === 'health') {
 }
 
 if ($command === 'demo:seed') {
-    $audit = new IndependentMall\Security\AuditLogger($kernel->pdo);
-    $catalog = new IndependentMall\Catalog\ProductCatalog(
-        $kernel->pdo,
-        new IndependentMall\Catalog\ProhibitedGoodsPolicy($kernel->pdo),
-        $audit,
-    );
-    if ($catalog->storefrontProducts() !== []) {
-        echo "Storefront already has listings.\n";
-        exit(0);
-    }
-    $mug = $catalog->createDraft(1, 'physical', 'Ceramic mug', 'ceramic-mug', 'Stoneware mug', 'A plain mug for beverages.', 'MUG-DEMO', 'Standard', 1800, 20, null);
-    $catalog->publish($mug['product_id'], null);
-    $notes = $catalog->createDraft(2, 'digital', 'Practice worksheet', 'practice-worksheet', 'Licensed worksheet', 'Download after payment.', 'DIG-DEMO', 'PDF', 600, 99, null);
-    $catalog->publish($notes['product_id'], null);
-    $catalog->attachDigitalAsset($notes['product_id'], 'worksheet', "Independent Mall sample worksheet\n");
-    echo "Seeded ceramic-mug and practice-worksheet.\n";
+    echo (new IndependentMall\Catalog\DemoSeeder($kernel->pdo))->seedIfEmpty() . "\n";
     exit(0);
 }
 
-echo "Usage: php bin/console [migrate|admin:create|demo:seed|health]\n";
+echo "Usage: php bin/console [doctor|install|migrate|admin:create|demo:seed|health]\n";
 exit(1);
