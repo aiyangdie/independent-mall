@@ -32,6 +32,9 @@ $flash = $e((string) ($data['flash'] ?? ''));
             · bound to <code><?= $e((string) $row['instance_id']) ?></code>
         <?php else: ?>
             · not bound to an instance
+        <?php endif; ?>
+        <?php if (($row['expires_at'] ?? '') !== ''): ?>
+            · expires <code><?= $e((string) $row['expires_at']) ?></code>
         <?php endif; ?></li>
 <?php endforeach; ?>
 </ul>
@@ -48,6 +51,14 @@ $flash = $e((string) ($data['flash'] ?? ''));
     <label>License id <input name="license_id" required></label>
     <label>Token <input name="token" required></label>
     <button type="submit">Unbind</button>
+</form>
+<form method="post" action="/account/renew">
+    <?= $csrf->field() ?>
+    <p>Fake renewal only — records a Fake order and extends the signed license. Not a real charge.</p>
+    <label>License id <input name="license_id" required></label>
+    <label>Token <input name="token" required></label>
+    <label>Days <input name="days" type="number" min="1" max="3660" value="365" required></label>
+    <button type="submit">Renew (Fake)</button>
 </form>
 <form method="post" action="/account/revoke">
     <?= $csrf->field() ?>

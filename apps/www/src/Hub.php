@@ -200,10 +200,58 @@ final class Hub
             $row['instance_id'] = $instance;
             $row['bound'] = $instance !== '';
             $row['revoked'] = !empty($payload['revoked']);
+            $row['expires_at'] = (string) ($payload['expires_at'] ?? '');
             $row['status'] = !empty($payload['revoked']) ? 'revoked' : ($instance !== '' ? 'bound' : 'unbound');
         }
         unset($row);
         return $rows;
+    }
+
+    /**
+     * Fake renewal only. Extends the paid window via the license store and replaces the signed account document.
+     * Does not talk to a card network.
+     *
+     * @return array{order_id:int,expires_at:string}
+     */
+    public function fakeRenew(int $userId, string $licenseId, string $token, int $days = 365): array
+    {
+        if ($days < 1 || $days > 3660) {
+            throw new \InvalidArgumentException('Renewal days are not acceptable.');
+        }
+        $this->assertOwns($userId, $licenseId, $token);
+        $before = $this->store->status($licenseId);
+        if (!empty($before['revoked'])) {
+            throw new \DomainException('License revoked.');
+        }
+        $baseTs = strtotime((string) $before['expires_at']);
+        if ($baseTs === false) {
+            throw new \DomainException('Current expiry is not acceptable.');
+        }
+        $newExpires = gmdate('c', $baseTs + $days * 86400);
+        $this->pdo->prepare(
+            'INSERT INTO orders (user_id, sku, amount_minor, status, adapter, created_at)
+             VALUES (:u, :s, :a, :st, :ad, :t)'
+        )->execute([
+            'u' => $userId,
+            's' => 'commercial-sample-notice-renew',
+            'a' => 4900,
+            'st' => 'fake_completed',
+            'ad' => 'fake',
+            't' => gmdate('c'),
+        ]);
+        $orderId = (int) $this->pdo->lastInsertId();
+        $payload = $this->store->renew($licenseId, $token, $newExpires);
+        $doc = Signer::sign($payload, $this->privatePem);
+        $this->pdo->prepare('UPDATE account_licenses SET document = :d WHERE user_id = :u AND license_id = :l')
+            ->execute(['d' => json_encode($doc, JSON_UNESCAPED_SLASHES), 'u' => $userId, 'l' => $licenseId]);
+        $this->log($userId, 'fake_renew', [
+            'order_id' => $orderId,
+            'license_id' => $licenseId,
+            'previous_expires_at' => (string) $before['expires_at'],
+            'expires_at' => (string) $payload['expires_at'],
+            'days' => $days,
+        ]);
+        return ['order_id' => $orderId, 'expires_at' => (string) $payload['expires_at']];
     }
 
     /**

@@ -183,12 +183,42 @@ final class OfficialSiteTest extends TestCase
         ], [], []));
         $boundAgain = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertStringContainsString('status <strong>bound</strong>', $boundAgain->body());
+        preg_match('/expires <code>([^<]+)<\/code>/', $boundAgain->body(), $expBefore);
+        $this->assertNotEmpty($expBefore);
+        $beforeTs = strtotime($expBefore[1]);
+        $this->assertNotFalse($beforeTs);
+
+        $renew = $this->site->handle(new Request('POST', '/account/renew', [], [
+            '_csrf' => $token,
+            'license_id' => $licenseId,
+            'token' => $secret,
+            'days' => '30',
+        ], [], []));
+        $this->assertSame(302, $renew->status());
+        $renewedPage = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('Fake renewal recorded', $renewedPage->body());
+        $this->assertStringContainsString('commercial-sample-notice-renew', $renewedPage->body());
+        $this->assertStringContainsString('fake_renew', $renewedPage->body());
+        preg_match('/expires <code>([^<]+)<\/code>/', $renewedPage->body(), $expAfter);
+        $this->assertNotEmpty($expAfter);
+        $afterTs = strtotime($expAfter[1]);
+        $this->assertNotFalse($afterTs);
+        $this->assertSame($beforeTs + 30 * 86400, $afterTs);
+        $this->assertStringContainsString('shop-demo-2', $renewedPage->body());
 
         $this->site->handle(new Request('POST', '/account/revoke', [], [
             '_csrf' => $token,
             'license_id' => $licenseId,
             'token' => $secret,
         ], [], []));
+        $blocked = $this->site->handle(new Request('POST', '/account/renew', [], [
+            '_csrf' => $token,
+            'license_id' => $licenseId,
+            'token' => $secret,
+            'days' => '30',
+        ], [], []));
+        $this->assertSame(400, $blocked->status());
+        $this->assertStringContainsString('License revoked', $blocked->body());
         $revokedPage = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertStringContainsString('status <strong>revoked</strong>', $revokedPage->body());
         $this->assertStringContainsString('commercial modules off', $revokedPage->body());

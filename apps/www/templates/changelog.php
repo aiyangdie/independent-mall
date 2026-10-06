@@ -5,10 +5,10 @@
 </p>
 <ol>
     <li>
-        <strong>0.1.1-dev</strong> — Single-use revocable download links on the customer center; license issuer renew;
-        register terms checkbox; license status recent_audit; purge + data inventory; license status (bound/revoked);
-        admin audit action filter; pricing Fake-only / counsel callouts; focus and reduced-motion CSS anchors;
-        empty-tree install smoke in PHPUnit. Still not a production release.
+        <strong>0.1.1-dev</strong> — Customer-center Fake renew; single-use revocable download links;
+        license issuer renew; register terms checkbox; license status recent_audit; purge + data inventory;
+        license status (bound/revoked); admin audit action filter; pricing Fake-only / counsel callouts;
+        focus and reduced-motion CSS anchors; empty-tree install smoke in PHPUnit. Still not a production release.
     </li>
     <li>
         <strong>0.1.1</strong> — Signed notes artifact for the update-verifier demo. Still not a production release.

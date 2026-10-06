@@ -38,7 +38,7 @@
 - 阶段 5 进行中：安装器、空树安装冒烟、deploy.md（本机 loopback `/healthz` `network_required=false`；未做网线拔除与物理备用机）。
 - 阶段 6 进行中：模块宿主、`FileLicenseGate`、示例插件；无本地签名文件则无法启用。
 - 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；续费 renew；CLI `status --id=` 含 `recent_audit`（无 token/nonce）；激活 nonce；吊销/purge；仪表盘 License audit。
-- 阶段 8 进行中：官网 `/docs` 索引 deploy 与 license-server-data；客户中心 Fake 购买/绑定/工单；下载链接单次且可撤销；定价/changelog Fake-only；验签更新检查仍为演示。
+- 阶段 8 进行中：官网 `/docs` 索引 deploy 与 license-server-data；客户中心 Fake 购买/续费/绑定/工单；下载链接单次且可撤销；定价/changelog Fake-only；验签更新检查仍为演示。
 - 已知提交以 `git log` 为准。测试基线随 PHPUnit 输出更新。
 - 社区版不得依赖授权服务器才能启动、登录、浏览或下单。
 
