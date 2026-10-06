@@ -2,6 +2,18 @@
 
 Community Edition runs without a license server. Keep `LICENSE_SERVER_URL` empty.
 
+## Offline core
+
+Catalog, cart, Fake pay, and `/healthz` use only the local database and local files. `curl_init` exists solely in `src/License/CurlTransport.php`, which is constructed from `POST /admin/license/refresh` and `php bin/console license:refresh`.
+
+How this was checked on the development host (loopback, not a NIC unplug):
+
+1. `GET /healthz` returns `"license_required": false` and `"network_required": false`.
+2. `tests/OfflineCoreTest.php` asserts no other `src/` file calls `curl_init`.
+3. PHPUnit boots the kernel with `sqlite:///:memory:` and still serves `/` and `/healthz`.
+
+A physical cable pull was not performed. Equivalence: those paths never open an outbound socket.
+
 ## Install
 
 Empty host:

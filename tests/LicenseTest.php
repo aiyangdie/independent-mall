@@ -134,6 +134,7 @@ final class LicenseTest extends TestCase
         $this->assertStringContainsString('lawful trade', $home->body());
         $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
         $this->assertFalse($health['license_required']);
+        $this->assertFalse($health['network_required']);
         $shopFront = (string) file_get_contents($this->root() . '/src/Http/ShopFront.php');
         $this->assertStringNotContainsString('AdminRefresh', $shopFront);
         $this->assertStringNotContainsString('LICENSE_SERVER_URL', $shopFront);

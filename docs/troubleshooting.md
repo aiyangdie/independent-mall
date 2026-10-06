@@ -14,7 +14,7 @@ The installer does not keep `ADMIN_PASSWORD` in `.env`. Use the password you typ
 
 ## Health is degraded
 
-`/healthz` `"database": "error"` means PDO cannot open `DATABASE_URL`. Check the SQLite path or MySQL credentials. Community Edition still must not point at a license server.
+`/healthz` `"database": "error"` means PDO cannot open `DATABASE_URL`. Check the SQLite path or MySQL credentials. `"network_required": false` means the Community storefront is not supposed to call a license server. If checkout fails only when WAN is down, look at DNS or a reverse proxy — not at Independent Mall core.
 
 ## Fake payment only
 

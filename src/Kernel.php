@@ -222,6 +222,7 @@ final class Kernel
             'status' => $db === 'ok' ? 'ok' : 'degraded',
             'edition' => 'community',
             'license_required' => false,
+            'network_required' => false,
             'php' => PHP_VERSION,
             'database' => $db,
             'installed' => (new Installer($this->config->root()))->isInstalled(),

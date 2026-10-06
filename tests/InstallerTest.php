@@ -138,6 +138,7 @@ final class InstallerTest extends TestCase
         $payload = json_decode($health->body(), true);
         $this->assertFalse($payload['installed']);
         $this->assertFalse($payload['license_required']);
+        $this->assertFalse($payload['network_required']);
     }
 
     public function testConfiguredInstanceShowsLockedInstaller(): void

@@ -32,6 +32,12 @@ function fetchStore(string $url, string &$cookie): array
     return [$status, substr($raw, $headerSize)];
 }
 
+[$st, $health] = fetchStore($base . '/healthz', $cookie);
+$json = json_decode($health, true);
+if ($st !== 200 || ($json['edition'] ?? '') !== 'community' || ($json['license_required'] ?? true) !== false || ($json['network_required'] ?? true) !== false) {
+    fwrite(STDERR, "health failed $st $health\n");
+    exit(1);
+}
 [$st, $home] = fetchStore($base . '/', $cookie);
 if ($st !== 200 || !str_contains($home, 'lawful trade') || !str_contains($home, '/c/physical-goods')) {
     fwrite(STDERR, "home failed $st\n");

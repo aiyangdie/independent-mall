@@ -43,7 +43,7 @@ if ($st !== 200 || !str_contains($home, 'lawful trade')) {
 }
 [$st, , $health] = fetch($base . '/healthz', $cookieHeader);
 $json = json_decode($health, true);
-if ($st !== 200 || ($json['license_required'] ?? true) !== false) {
+if ($st !== 200 || ($json['license_required'] ?? true) !== false || ($json['network_required'] ?? true) !== false) {
     fwrite(STDERR, "health failed\n");
     exit(1);
 }

@@ -7,6 +7,7 @@ ob_start();
     <dl class="stats">
         <div><dt>Edition</dt><dd><?= $e($health['edition'] ?? '') ?></dd></div>
         <div><dt>License gate</dt><dd><?= !empty($health['license_required']) ? 'yes' : 'no' ?></dd></div>
+        <div><dt>Needs internet</dt><dd><?= !empty($health['network_required']) ? 'yes' : 'no' ?></dd></div>
         <div><dt>Database</dt><dd><?= $e($health['database'] ?? '') ?></dd></div>
         <div><dt>PHP</dt><dd><?= $e($health['php'] ?? '') ?></dd></div>
     </dl>

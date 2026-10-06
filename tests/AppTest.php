@@ -71,6 +71,7 @@ final class AppTest extends TestCase
         $health = $kernel->health();
         $this->assertSame('community', $health['edition']);
         $this->assertFalse($health['license_required']);
+        $this->assertFalse($health['network_required']);
         $this->assertSame('ok', $health['database']);
     }
 
@@ -107,6 +108,7 @@ final class AppTest extends TestCase
         $payload = json_decode($health->body(), true);
         $this->assertIsArray($payload);
         $this->assertFalse($payload['license_required']);
+        $this->assertFalse($payload['network_required']);
         $this->assertSame('community', $payload['edition']);
         $this->assertArrayHasKey('installed', $payload);
     }

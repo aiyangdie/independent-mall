@@ -134,5 +134,6 @@ final class ModuleHostTest extends TestCase
         $health = $kernel->handle(new Request('GET', '/healthz', [], [], [], []));
         $payload = json_decode($health->body(), true);
         $this->assertFalse($payload['license_required']);
+        $this->assertFalse($payload['network_required']);
     }
 }
