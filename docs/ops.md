@@ -60,7 +60,7 @@ Optional commercial license refresh (not used by Community storefront):
 php bin/console license:refresh --id=lic_demo --token=TOKEN --instance=shop-1
 ```
 
-`--url` defaults to `LICENSE_SERVER_URL`. Leave that empty on Community installs. If the call fails, `var/license.json` is left unchanged so the 14-day grace still applies.
+`--url` defaults to `LICENSE_SERVER_URL`. Leave that empty on Community installs. `--id` and `--instance` must match the local `var/license.json` when that file already verifies. If the call fails, `var/license.json` is left unchanged so the 14-day grace still applies.
 
 ## Signed file updates (demo)
 

@@ -18,6 +18,27 @@ final class AdminRefresh
         if ($serverUrl === '') {
             throw new \DomainException('LICENSE_SERVER_URL is empty. Paste an offline document instead of calling a server.');
         }
+        $licenseId = trim($licenseId);
+        $token = trim($token);
+        $instanceId = trim($instanceId);
+        if ($licenseId === '' || $token === '') {
+            throw new \DomainException('License id and token are required.');
+        }
+        if (preg_match('/^[a-zA-Z0-9._:-]{3,128}$/', $instanceId) !== 1) {
+            throw new \DomainException('Instance id is not acceptable.');
+        }
+        $local = FileLicenseGate::fromRoot($this->root);
+        if ($local instanceof FileLicenseGate) {
+            $current = $local->payload();
+            if (is_array($current)) {
+                if ((string) ($current['license_id'] ?? '') !== $licenseId) {
+                    throw new \DomainException('Refresh license id does not match the local document.');
+                }
+                if ((string) ($current['instance_id'] ?? '') !== $instanceId) {
+                    throw new \DomainException('Refresh instance id does not match the local document.');
+                }
+            }
+        }
         $url = rtrim($serverUrl, '/') . '/refresh';
         $docPath = $this->root . '/var/license.json';
         try {
@@ -39,9 +60,14 @@ final class AdminRefresh
             $pub = $this->root . '/config/license-public.pem';
         }
         $gate = new FileLicenseGate($tmp, $pub);
-        if ($gate->payload() === null) {
+        $payload = $gate->payload();
+        if ($payload === null) {
             @unlink($tmp);
             throw new \RuntimeException('Refreshed document failed local verification. Existing local document kept for grace.');
+        }
+        if ((string) ($payload['license_id'] ?? '') !== $licenseId || (string) ($payload['instance_id'] ?? '') !== $instanceId) {
+            @unlink($tmp);
+            throw new \RuntimeException('Refreshed document does not match this shop instance. Existing local document kept for grace.');
         }
         if (!rename($tmp, $docPath)) {
             copy($tmp, $docPath);

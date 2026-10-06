@@ -196,6 +196,71 @@ final class LicenseTest extends TestCase
         $this->assertSame([], $empty->calls);
     }
 
+    public function testAdminRefreshRejectsInstanceMismatchWithoutHttp(): void
+    {
+        $pair = Signer::generateKeypair();
+        $dir = sys_get_temp_dir() . '/im-ref-mis-' . bin2hex(random_bytes(3));
+        mkdir($dir . '/var', 0775, true);
+        $issued = time();
+        $payload = [
+            'license_id' => 'lic_r',
+            'instance_id' => 'shop-1',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $issued),
+            'last_refresh_at' => gmdate('c', $issued),
+            'expires_at' => gmdate('c', $issued + 3600),
+            'grace_days' => 14,
+            'revoked' => false,
+        ];
+        file_put_contents($dir . '/var/license.json', json_encode(Signer::sign($payload, $pair['private'])));
+        file_put_contents($dir . '/var/license-public.pem', $pair['public']);
+        $before = (string) file_get_contents($dir . '/var/license.json');
+        $transport = new RecordingTransport(Signer::sign($payload, $pair['private']));
+        try {
+            (new AdminRefresh($dir, $transport))->refresh('http://127.0.0.1:8091', 'lic_r', 'tok', 'shop-other');
+            $this->fail('mismatch');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('instance', $e->getMessage());
+        }
+        $this->assertSame([], $transport->calls);
+        $this->assertSame($before, (string) file_get_contents($dir . '/var/license.json'));
+    }
+
+    public function testAdminRefreshKeepsLocalFileWhenServerReturnsOtherInstance(): void
+    {
+        $pair = Signer::generateKeypair();
+        $dir = sys_get_temp_dir() . '/im-ref-swap-' . bin2hex(random_bytes(3));
+        mkdir($dir . '/var', 0775, true);
+        $issued = time();
+        $localPayload = [
+            'license_id' => 'lic_r',
+            'instance_id' => 'shop-1',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $issued),
+            'last_refresh_at' => gmdate('c', $issued),
+            'expires_at' => gmdate('c', $issued + 3600),
+            'grace_days' => 14,
+            'revoked' => false,
+        ];
+        $local = Signer::sign($localPayload, $pair['private']);
+        file_put_contents($dir . '/var/license.json', json_encode($local));
+        file_put_contents($dir . '/var/license-public.pem', $pair['public']);
+        $foreign = $localPayload;
+        $foreign['instance_id'] = 'shop-2';
+        $foreign['last_refresh_at'] = gmdate('c', $issued + 50);
+        $transport = new RecordingTransport(Signer::sign($foreign, $pair['private']));
+        try {
+            (new AdminRefresh($dir, $transport))->refresh('http://127.0.0.1:8091', 'lic_r', 'tok', 'shop-1');
+            $this->fail('foreign instance');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('instance', $e->getMessage());
+        }
+        $this->assertCount(1, $transport->calls);
+        $kept = json_decode((string) file_get_contents($dir . '/var/license.json'), true);
+        $this->assertSame('shop-1', $kept['payload']['instance_id']);
+        $this->assertSame($localPayload['last_refresh_at'], $kept['payload']['last_refresh_at']);
+    }
+
     public function testServerRefreshRequiresBoundInstance(): void
     {
         $pdo = new \PDO('sqlite::memory:');

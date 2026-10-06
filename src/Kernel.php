@@ -295,7 +295,31 @@ final class Kernel
             'error' => $error,
             'user' => $this->auth->user(),
             'license_server' => $this->config->get('LICENSE_SERVER_URL'),
+            'local_license' => $this->localLicenseView(),
         ], $status);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function localLicenseView(): array
+    {
+        $gate = FileLicenseGate::fromRoot($this->config->root());
+        if (!$gate instanceof FileLicenseGate) {
+            return ['present' => false];
+        }
+        $payload = $gate->payload();
+        if ($payload === null) {
+            return ['present' => false];
+        }
+        $ents = $payload['entitlements'] ?? [];
+        return [
+            'present' => true,
+            'license_id' => (string) ($payload['license_id'] ?? ''),
+            'instance_id' => (string) ($payload['instance_id'] ?? ''),
+            'expires_at' => (string) ($payload['expires_at'] ?? ''),
+            'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
+        ];
     }
 
     private function registerCatalogRoutes(): void
@@ -629,6 +653,13 @@ final class Kernel
                 @unlink($root . '/var/license.json');
                 return Response::html('License document failed verification. Community shop is unchanged.', 422);
             }
+            (new AuditLogger($this->pdo))->record(
+                $this->auth->user()['id'] ?? null,
+                'license.store',
+                'license',
+                (string) ($gate->payload()['license_id'] ?? ''),
+                ['instance_id' => (string) ($gate->payload()['instance_id'] ?? '')],
+            );
             return Response::redirect('/admin/modules');
         });
         $this->router->add('POST', '/admin/license/refresh', function (Request $request) {
@@ -639,11 +670,20 @@ final class Kernel
                 return Response::html('Invalid form', 400);
             }
             try {
+                $instanceId = $request->post('instance_id');
+                $licenseId = $request->post('license_id');
                 (new AdminRefresh($this->config->root(), new CurlTransport()))->refresh(
                     $this->config->get('LICENSE_SERVER_URL'),
-                    $request->post('license_id'),
+                    $licenseId,
                     $request->post('token'),
-                    $request->post('instance_id'),
+                    $instanceId,
+                );
+                (new AuditLogger($this->pdo))->record(
+                    $this->auth->user()['id'] ?? null,
+                    'license.refresh',
+                    'license',
+                    $licenseId,
+                    ['instance_id' => $instanceId],
                 );
             } catch (\Throwable $e) {
                 return $this->adminModulesPage($e->getMessage(), 422);

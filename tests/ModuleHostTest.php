@@ -197,6 +197,14 @@ final class ModuleHostTest extends TestCase
         $this->assertSame(302, $enable->status());
         $page = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
         $this->assertStringContainsString('Local entitlement: yes', $page->body());
+        $this->assertStringContainsString('lic_kernel', $page->body());
+        $this->assertStringContainsString('shop-test', $page->body());
+        $this->assertStringContainsString('bound to', $page->body());
+        $audit = $this->pdo->query("SELECT action, entity_id, meta FROM audit_logs WHERE action = 'license.store'")->fetch(\PDO::FETCH_ASSOC);
+        $this->assertIsArray($audit);
+        $this->assertSame('lic_kernel', $audit['entity_id']);
+        $this->assertStringContainsString('shop-test', (string) $audit['meta']);
+        $this->assertStringNotContainsString($pair['private'], (string) $audit['meta']);
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
         $this->assertStringContainsString('Sample commercial notice', $home->body());
