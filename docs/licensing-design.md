@@ -20,11 +20,11 @@ Do not invent “open source but no commercial use”.
 
 Distributed under a commercial agreement. Activation:
 
-1. Merchant pastes license id + token.
-2. Client sends instance id (hostname hash + install id UUID, not a consumer fingerprint).
-3. License server returns signed JSON.
+1. Merchant receives license id, refresh token, and a one-time activation nonce (shown once).
+2. Client sends instance id (hostname hash + install id UUID, not a consumer fingerprint) plus the nonce.
+3. License server binds the instance, consumes the nonce, and returns signed JSON. Replaying the same activate body fails. After unbind, a new nonce is issued.
 4. Client verifies with the **embedded public key**.
-5. Refresh in admin cron; 14-day grace on network failure.
+5. Refresh in admin cron uses the token (not the spent nonce); 14-day grace on network failure.
 6. Expiry disables commercial packages only.
 
 Signature: OpenSSL Ed25519 (`OPENSSL_KEYTYPE_ED25519` on PHP 8.5). If Ed25519 is unavailable the issuer and verifier fail closed. Private keys live only under `apps/license-server/var/` (gitignored). Community Core verifies `var/license.json` with a public key and never phones home on storefront requests. After `expires_at`, `grace_days` (default 14) still allow already-issued entitlements using `last_refresh_at`. Revocation and signature tampering deny commercial modules only.

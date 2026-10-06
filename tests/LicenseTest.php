@@ -76,11 +76,11 @@ final class LicenseTest extends TestCase
         $pdo = new \PDO('sqlite::memory:');
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         $store = new Store($pdo);
-        $store->issue('lic_2', 'secret-token-value', ['storefront_notice'], gmdate('c', time() + 86400));
-        $payload = $store->activate('lic_2', 'secret-token-value', 'host-a');
+        $nonce = $store->issue('lic_2', 'secret-token-value', ['storefront_notice'], gmdate('c', time() + 86400));
+        $payload = $store->activate('lic_2', 'secret-token-value', 'host-a', $nonce);
         $this->assertSame('host-a', $payload['instance_id']);
         $this->expectException(\DomainException::class);
-        $store->activate('lic_2', 'secret-token-value', 'host-b');
+        $store->activate('lic_2', 'secret-token-value', 'host-b', $nonce);
     }
 
     public function testUnbindAllowsANewInstance(): void
@@ -88,10 +88,17 @@ final class LicenseTest extends TestCase
         $pdo = new \PDO('sqlite::memory:');
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         $store = new Store($pdo);
-        $store->issue('lic_3', 'token-three-xx', ['storefront_notice'], gmdate('c', time() + 86400));
-        $store->activate('lic_3', 'token-three-xx', 'host-a');
-        $store->unbind('lic_3');
-        $again = $store->activate('lic_3', 'token-three-xx', 'host-b');
+        $nonce = $store->issue('lic_3', 'token-three-xx', ['storefront_notice'], gmdate('c', time() + 86400));
+        $store->activate('lic_3', 'token-three-xx', 'host-a', $nonce);
+        $next = $store->unbind('lic_3');
+        $this->assertNotSame($nonce, $next);
+        try {
+            $store->activate('lic_3', 'token-three-xx', 'host-b', $nonce);
+            $this->fail('old nonce must not bind after unbind');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('nonce', $e->getMessage());
+        }
+        $again = $store->activate('lic_3', 'token-three-xx', 'host-b', $next);
         $this->assertSame('host-b', $again['instance_id']);
     }
 
@@ -194,16 +201,27 @@ final class LicenseTest extends TestCase
         $pdo = new \PDO('sqlite::memory:');
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         $store = new Store($pdo);
-        $store->issue('lic_r2', 'token-refresh', ['storefront_notice'], gmdate('c', time() + 86400));
+        $nonce = $store->issue('lic_r2', 'token-refresh', ['storefront_notice'], gmdate('c', time() + 86400));
         try {
             $store->refresh('lic_r2', 'token-refresh', 'host-a');
             $this->fail('unbound');
         } catch (\DomainException) {
         }
-        $store->activate('lic_r2', 'token-refresh', 'host-a');
+        $store->activate('lic_r2', 'token-refresh', 'host-a', $nonce);
         $again = $store->refresh('lic_r2', 'token-refresh', 'host-a');
         $this->assertSame('host-a', $again['instance_id']);
         $this->assertNotSame('', $again['last_refresh_at']);
+    }
+
+    public function testActivateNonceIsSingleUse(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $nonce = $store->issue('lic_once', 'token-once-xxxx', ['storefront_notice'], gmdate('c', time() + 86400));
+        $store->activate('lic_once', 'token-once-xxxx', 'host-a', $nonce);
+        $this->expectException(\DomainException::class);
+        $store->activate('lic_once', 'token-once-xxxx', 'host-a', $nonce);
     }
 
     public function testActivateRejectsBlankInstanceId(): void
@@ -211,9 +229,9 @@ final class LicenseTest extends TestCase
         $pdo = new \PDO('sqlite::memory:');
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         $store = new Store($pdo);
-        $store->issue('lic_blank', 'token-blank-xx', ['storefront_notice'], gmdate('c', time() + 86400));
+        $nonce = $store->issue('lic_blank', 'token-blank-xx', ['storefront_notice'], gmdate('c', time() + 86400));
         $this->expectException(\DomainException::class);
-        $store->activate('lic_blank', 'token-blank-xx', '  ');
+        $store->activate('lic_blank', 'token-blank-xx', '  ', $nonce);
     }
 
     public function testLicenseServerLoadsFromItsOwnBootstrap(): void

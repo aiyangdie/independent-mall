@@ -31,6 +31,7 @@ $flash = $e((string) ($data['flash'] ?? ''));
     <?= $csrf->field() ?>
     <label>License id <input name="license_id" required></label>
     <label>Token <input name="token" required></label>
+    <label>Activation nonce <input name="nonce" required></label>
     <label>Instance id <input name="instance_id" required></label>
     <button type="submit">Bind instance</button>
 </form>

@@ -25,4 +25,4 @@ Fake payment notify is invoked from `/orders/{id}/pay-fake` using server-side am
 
 Digital download tokens are hashed at rest (`HMAC-SHA256` with `APP_KEY`). The plaintext token is shown once after fake payment success and is not written to logs.
 
-Official site (`apps/www`, local `:8092`) is a separate process: marketing, `/legal/{terms,privacy,aup,refunds,prohibited,disclaimer}`, `/updates.json`, customer center, Fake buy, bind/unbind, tickets, HMAC downloads, download audit, and `GET /account/updates` (verify only). Shop CLI `update:apply` never runs from that page.
+Official site (`apps/www`, local `:8092`) is a separate process: marketing, `/legal/{terms,privacy,aup,refunds,prohibited,disclaimer}`, `/updates.json`, customer center, Fake buy, bind/unbind with a one-time activation nonce, tickets, HMAC downloads, download audit, and `GET /account/updates` (verify only). Shop CLI `update:apply` never runs from that page.

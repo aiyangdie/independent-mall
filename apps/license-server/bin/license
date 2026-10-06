@@ -49,8 +49,8 @@ if ($command === 'issue') {
         fwrite(STDERR, "Usage: php bin/license issue --id=lic_1 [--days=365]\n");
         exit(1);
     }
-    $store->issue($id, $token, $ents, gmdate('c', time() + $days * 86400));
-    echo "Issued {$id}. One-time token (not stored in plaintext): {$token}\n";
+    $nonce = $store->issue($id, $token, $ents, gmdate('c', time() + $days * 86400));
+    echo "Issued {$id}. Token (keep for refresh/unbind): {$token}\nActivation nonce (shown once): {$nonce}\n";
     exit(0);
 }
 
@@ -58,12 +58,15 @@ if ($command === 'offline') {
     $id = '';
     $instance = 'offline';
     $token = '';
+    $nonce = '';
     $out = '';
     foreach (array_slice($argv, 2) as $arg) {
         if (str_starts_with($arg, '--id=')) {
             $id = substr($arg, 5);
         } elseif (str_starts_with($arg, '--token=')) {
             $token = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--nonce=')) {
+            $nonce = substr($arg, 8);
         } elseif (str_starts_with($arg, '--instance=')) {
             $instance = substr($arg, 11);
         } elseif (str_starts_with($arg, '--out=')) {
@@ -71,7 +74,7 @@ if ($command === 'offline') {
         }
     }
     $private = (string) file_get_contents($var . '/private.pem');
-    $payload = $store->activate($id, $token, $instance);
+    $payload = $store->activate($id, $token, $instance, $nonce);
     $doc = json_encode(Signer::sign($payload, $private), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     if ($out !== '') {
         file_put_contents($out, $doc);

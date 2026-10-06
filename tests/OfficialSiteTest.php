@@ -125,15 +125,17 @@ final class OfficialSiteTest extends TestCase
         $this->assertSame(200, $account->status());
         $this->assertStringContainsString('fake_completed', $account->body());
         $this->assertMatchesRegularExpression('/lic_[a-f0-9]+/', $account->body());
-        preg_match('/License (lic_[a-f0-9]+) token \(shown once\): ([a-f0-9]+)/', $account->body(), $m);
+        preg_match('/License (lic_[a-f0-9]+) token \(shown once\): ([a-f0-9]+) nonce \(shown once\): ([a-f0-9]+)/', $account->body(), $m);
         $this->assertNotEmpty($m);
         $licenseId = $m[1];
         $secret = $m[2];
+        $nonce = $m[3];
 
         $this->site->handle(new Request('POST', '/account/activate', [], [
             '_csrf' => $token,
             'license_id' => $licenseId,
             'token' => $secret,
+            'nonce' => $nonce,
             'instance_id' => 'shop-demo-1',
         ], [], []));
         $docs = $this->hub->licenses((int) $_SESSION['www_user']);
@@ -150,10 +152,14 @@ final class OfficialSiteTest extends TestCase
             'license_id' => $licenseId,
             'token' => $secret,
         ], [], []));
+        $afterUnbind = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        preg_match('/Next activation nonce \(shown once\): ([a-f0-9]+)/', $afterUnbind->body(), $n2);
+        $this->assertNotEmpty($n2);
         $this->site->handle(new Request('POST', '/account/activate', [], [
             '_csrf' => $token,
             'license_id' => $licenseId,
             'token' => $secret,
+            'nonce' => $n2[1],
             'instance_id' => 'shop-demo-2',
         ], [], []));
 

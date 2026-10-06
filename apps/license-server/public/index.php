@@ -30,6 +30,7 @@ if ($method === 'POST' && $path === '/activate') {
             (string) ($body['license_id'] ?? ''),
             (string) ($body['token'] ?? ''),
             (string) ($body['instance_id'] ?? ''),
+            (string) ($body['nonce'] ?? ''),
         );
         $private = (string) file_get_contents($var . '/private.pem');
         $doc = Signer::sign($payload, $private);
@@ -52,8 +53,8 @@ if ($method === 'POST' && $path === '/unbind') {
         if (!is_array($row) || !hash_equals((string) $row['token_hash'], hash('sha256', $token))) {
             throw new DomainException('Unknown license.');
         }
-        $store->unbind($id);
-        echo json_encode(['ok' => true]);
+        $next = $store->unbind($id);
+        echo json_encode(['ok' => true, 'activation_nonce' => $next]);
     } catch (Throwable $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);

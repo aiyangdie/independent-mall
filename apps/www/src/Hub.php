@@ -118,7 +118,7 @@ final class Hub
     /**
      * Fake commercial SKU only. Does not talk to a card network.
      *
-     * @return array{order_id:int,license_id:string,token:string}
+     * @return array{order_id:int,license_id:string,token:string,nonce:string}
      */
     public function fakeBuyNotice(int $userId): array
     {
@@ -136,7 +136,7 @@ final class Hub
         $orderId = (int) $this->pdo->lastInsertId();
         $licenseId = 'lic_' . bin2hex(random_bytes(6));
         $token = bin2hex(random_bytes(16));
-        $this->store->issue($licenseId, $token, ['storefront_notice'], gmdate('c', time() + 86400 * 365));
+        $nonce = $this->store->issue($licenseId, $token, ['storefront_notice'], gmdate('c', time() + 86400 * 365));
         $payload = [
             'license_id' => $licenseId,
             'instance_id' => '',
@@ -159,7 +159,7 @@ final class Hub
             't' => gmdate('c'),
         ]);
         $this->log($userId, 'fake_buy', ['order_id' => $orderId, 'license_id' => $licenseId]);
-        return ['order_id' => $orderId, 'license_id' => $licenseId, 'token' => $token];
+        return ['order_id' => $orderId, 'license_id' => $licenseId, 'token' => $token, 'nonce' => $nonce];
     }
 
     /**
@@ -185,10 +185,10 @@ final class Hub
     /**
      * @return array<string, mixed>
      */
-    public function activate(int $userId, string $licenseId, string $token, string $instanceId): array
+    public function activate(int $userId, string $licenseId, string $token, string $instanceId, string $nonce): array
     {
         $this->assertOwns($userId, $licenseId, $token);
-        $payload = $this->store->activate($licenseId, $token, $instanceId);
+        $payload = $this->store->activate($licenseId, $token, $instanceId, $nonce);
         $doc = Signer::sign($payload, $this->privatePem);
         $this->pdo->prepare('UPDATE account_licenses SET document = :d WHERE user_id = :u AND license_id = :l')
             ->execute(['d' => json_encode($doc, JSON_UNESCAPED_SLASHES), 'u' => $userId, 'l' => $licenseId]);
@@ -196,11 +196,12 @@ final class Hub
         return $doc;
     }
 
-    public function unbind(int $userId, string $licenseId, string $token): void
+    public function unbind(int $userId, string $licenseId, string $token): string
     {
         $this->assertOwns($userId, $licenseId, $token);
-        $this->store->unbind($licenseId);
+        $nonce = $this->store->unbind($licenseId);
         $this->log($userId, 'unbind', ['license_id' => $licenseId]);
+        return $nonce;
     }
 
     public function openTicket(int $userId, string $title, string $body): void

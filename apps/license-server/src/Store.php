@@ -18,6 +18,7 @@ final class Store
                 expires_at TEXT NOT NULL,
                 grace_days INTEGER NOT NULL DEFAULT 14,
                 instance_id TEXT,
+                activation_nonce_hash TEXT NOT NULL DEFAULT \'\',
                 revoked INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL
             )'
@@ -31,32 +32,37 @@ final class Store
                 created_at TEXT NOT NULL
             )"
         );
+        $this->ensureNonceColumn();
     }
 
     /**
      * @param list<string> $entitlements
+     * @return string One-time activation nonce (not stored in plaintext)
      */
-    public function issue(string $id, string $token, array $entitlements, string $expiresAt, int $graceDays = 14): void
+    public function issue(string $id, string $token, array $entitlements, string $expiresAt, int $graceDays = 14): string
     {
         $now = gmdate('c');
+        $nonce = bin2hex(random_bytes(16));
         $this->pdo->prepare(
-            'INSERT INTO licenses (id, token_hash, entitlements, expires_at, grace_days, created_at)
-             VALUES (:i, :h, :e, :x, :g, :c)'
+            'INSERT INTO licenses (id, token_hash, entitlements, expires_at, grace_days, activation_nonce_hash, created_at)
+             VALUES (:i, :h, :e, :x, :g, :n, :c)'
         )->execute([
             'i' => $id,
             'h' => hash('sha256', $token),
             'e' => json_encode($entitlements, JSON_THROW_ON_ERROR),
             'x' => $expiresAt,
             'g' => $graceDays,
+            'n' => hash('sha256', $nonce),
             'c' => $now,
         ]);
         $this->audit($id, 'issue', ['entitlements' => $entitlements]);
+        return $nonce;
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function activate(string $id, string $token, string $instanceId): array
+    public function activate(string $id, string $token, string $instanceId, string $nonce): array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM licenses WHERE id = :i');
         $stmt->execute(['i' => $id]);
@@ -72,8 +78,15 @@ final class Store
         if ($bound !== '' && $bound !== $instanceId) {
             throw new \DomainException('License is bound to another instance.');
         }
-        $this->pdo->prepare('UPDATE licenses SET instance_id = :n WHERE id = :i')
-            ->execute(['n' => $instanceId, 'i' => $id]);
+        if ($bound !== '') {
+            throw new \DomainException('Already bound. Use refresh.');
+        }
+        $expect = (string) ($row['activation_nonce_hash'] ?? '');
+        if ($expect === '' || !hash_equals($expect, hash('sha256', trim($nonce)))) {
+            throw new \DomainException('Activation nonce is not valid.');
+        }
+        $this->pdo->prepare('UPDATE licenses SET instance_id = :n, activation_nonce_hash = :z WHERE id = :i')
+            ->execute(['n' => $instanceId, 'z' => '', 'i' => $id]);
         $this->audit($id, 'activate', ['instance_id' => $instanceId]);
         $ents = json_decode((string) $row['entitlements'], true);
         return [
@@ -94,10 +107,13 @@ final class Store
         $this->audit($id, 'revoke', []);
     }
 
-    public function unbind(string $id): void
+    public function unbind(string $id): string
     {
-        $this->pdo->prepare('UPDATE licenses SET instance_id = NULL WHERE id = :i')->execute(['i' => $id]);
+        $nonce = bin2hex(random_bytes(16));
+        $this->pdo->prepare('UPDATE licenses SET instance_id = NULL, activation_nonce_hash = :n WHERE id = :i')
+            ->execute(['n' => hash('sha256', $nonce), 'i' => $id]);
         $this->audit($id, 'unbind', []);
+        return $nonce;
     }
 
     /**
@@ -140,6 +156,17 @@ final class Store
             throw new \DomainException('Instance id is not acceptable.');
         }
         return $instanceId;
+    }
+
+    private function ensureNonceColumn(): void
+    {
+        $names = [];
+        foreach ($this->pdo->query('PRAGMA table_info(licenses)') as $col) {
+            $names[] = (string) $col['name'];
+        }
+        if (!in_array('activation_nonce_hash', $names, true)) {
+            $this->pdo->exec("ALTER TABLE licenses ADD COLUMN activation_nonce_hash TEXT NOT NULL DEFAULT ''");
+        }
     }
 
     /**

@@ -178,14 +178,20 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $bought = $this->hub->fakeBuyNotice($uid);
-        $_SESSION['www_flash'] = 'Fake payment recorded. License ' . $bought['license_id'] . ' token (shown once): ' . $bought['token'];
+        $_SESSION['www_flash'] = 'Fake payment recorded. License ' . $bought['license_id'] . ' token (shown once): ' . $bought['token'] . ' nonce (shown once): ' . $bought['nonce'];
         return Response::redirect('/account');
     }
 
     private function activate(Request $request): Response
     {
         $uid = $this->requireUser($request);
-        $this->hub->activate($uid, $request->post('license_id'), $request->post('token'), $request->post('instance_id'));
+        $this->hub->activate(
+            $uid,
+            $request->post('license_id'),
+            $request->post('token'),
+            $request->post('instance_id'),
+            $request->post('nonce'),
+        );
         $_SESSION['www_flash'] = 'Instance bound.';
         return Response::redirect('/account');
     }
@@ -193,8 +199,8 @@ final class Site
     private function unbind(Request $request): Response
     {
         $uid = $this->requireUser($request);
-        $this->hub->unbind($uid, $request->post('license_id'), $request->post('token'));
-        $_SESSION['www_flash'] = 'Instance unbound.';
+        $next = $this->hub->unbind($uid, $request->post('license_id'), $request->post('token'));
+        $_SESSION['www_flash'] = 'Instance unbound. Next activation nonce (shown once): ' . $next;
         return Response::redirect('/account');
     }
 
