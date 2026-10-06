@@ -5,7 +5,7 @@
 </p>
 <ol>
     <li>
-        <strong>0.1.1-dev</strong> — Dual-HTTP cross-app E2E; atomic license import + pinned trust public key; FileLicenseGate::isValid; download signed license JSON + public PEM; pricing/docs Fake demo path; admin Modules product/customer; Fake renew orders; tickets; single-use downloads;
+        <strong>0.1.1-dev</strong> — Update inspect failure matrix (no auto-install / no file mutation); dual-HTTP cross-app E2E; atomic license import + pinned trust public key; FileLicenseGate::isValid; download signed license JSON + public PEM; pricing/docs Fake demo path; Fake renew orders; tickets; single-use downloads;
         license issuer renew; register terms checkbox; license status recent_audit; purge + data inventory;
         license status (bound/revoked); admin audit action filter; pricing Fake-only / counsel callouts;
         focus and reduced-motion CSS anchors; empty-tree install smoke in PHPUnit. Still not a production release.

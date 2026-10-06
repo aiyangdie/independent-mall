@@ -37,9 +37,11 @@ final class PackageVerifier
         if (str_contains($artifactPath, '.php') || str_starts_with(ltrim($raw), '<?php') || str_contains($raw, "\0")) {
             throw new \DomainException('Refusing to apply an executable or binary payload.');
         }
-        $need = (string) ($manifest['php'] ?? '>=8.2');
-        if ($need === '>=8.2' && version_compare(PHP_VERSION, '8.2.0', '<')) {
-            throw new \DomainException('PHP is too old for this update.');
+        $need = trim((string) ($manifest['php'] ?? '>=8.2'));
+        if (preg_match('/^>=\s*(\d+\.\d+(?:\.\d+)?)/', $need, $phpNeed) === 1) {
+            if (version_compare(PHP_VERSION, $phpNeed[1], '<')) {
+                throw new \DomainException('PHP is too old for this update.');
+            }
         }
         $fromMajor = self::major($currentVersion);
         $toMajor = self::major((string) ($manifest['version'] ?? ''));

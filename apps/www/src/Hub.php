@@ -728,7 +728,20 @@ final class Hub
     public function inspectUpdates(?int $userId = null): array
     {
         $doc = $this->updates();
+        $unsignedPath = $this->filesDir . '/' . self::FILES['community-notes'];
         $unsigned = 'refused_auto_install';
+        try {
+            PackageVerifier::assertSafeToApply(
+                $doc['latest'],
+                $unsignedPath,
+                (string) $doc['update_public_key'],
+                '0.1.0',
+            );
+            // Must never succeed: unsigned channel is for metadata display only.
+            $unsigned = 'unexpected_unsigned_ok';
+        } catch (\Throwable) {
+            $unsigned = 'refused_auto_install';
+        }
         $signedPath = $this->filesDir . '/' . self::FILES['community-0.1.1'];
         $signed = 'unverified';
         try {
@@ -742,7 +755,7 @@ final class Hub
         } catch (\Throwable $e) {
             $signed = 'failed:' . $e->getMessage();
         }
-        $this->log($userId, 'inspect_updates', ['signed' => $signed, 'applied' => false]);
+        $this->log($userId, 'inspect_updates', ['signed' => $signed, 'unsigned' => $unsigned, 'applied' => false]);
         return [
             'unsigned' => $unsigned,
             'signed' => $signed,

@@ -80,5 +80,5 @@ The shop never downloads or executes an update during a storefront request.
 php bin/console update:apply --install=PATH --artifact=FILE --manifest=manifest.json --public=update-public.pem --current=0.1.0
 ```
 
-`SafeApplier` verifies Ed25519 and SHA-256, copies the install directory, writes `NOTES.txt`, and restores the copy if the write callback fails. Unsigned manifests and silent major-version jumps are refused. PHP payloads are refused. This is a local demonstration, not a production CDN or auto-updater.
+`SafeApplier` verifies Ed25519 and SHA-256, copies the install directory, writes `NOTES.txt`, and restores the copy if the write callback fails. Refused without writing: unsigned manifests, bad/missing signatures, SHA-256 mismatch, silent major-version jumps, incompatible PHP (`>=x.y`), and PHP/executable payloads. OfficialSite `GET /account/updates` only inspects (`verified_not_applied` / `refused_auto_install` / `failed:…`) and never applies. Covered by `tests/UpdateTest.php` and `tests/OfficialSiteTest.php`. This is a local demonstration, not a production CDN or auto-updater.
 

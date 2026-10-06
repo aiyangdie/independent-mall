@@ -8,7 +8,7 @@ Fake purchase in the customer center writes `fake_completed` via the Fake adapte
 
 Download links are HMAC + expiry (10 minutes). File ids are a whitelist; `realpath` must stay under `apps/www/data/files`.
 
-`GET /updates.json` includes an unsigned `latest` channel (auto-install forbidden) and a `signed_release` channel. Clients must verify SHA-256 and Ed25519, copy the install tree first, and restore that copy if the write fails. `php bin/console update:apply` is the local demonstration; it does not fetch URLs.
+`GET /updates.json` includes an unsigned `latest` channel (auto-install forbidden) and a `signed_release` channel. Clients must verify SHA-256 and Ed25519, copy the install tree first, and restore that copy if the write fails. `GET /account/updates` verifies only (`refused_auto_install` for unsigned; `verified_not_applied` or `failed:…` for signed) and never writes install files. Failure paths (tamper, bad signature, hash mismatch, major jump, PHP requirement) leave artifacts and Community trees unchanged — see `tests/UpdateTest.php` / `OfficialSiteTest::testInspectUpdateFailuresDoNotMutateArtifactsOrCommunity`. `php bin/console update:apply` is the local demonstration; it does not fetch URLs.
 
 Customer center lists HMAC downloads, a download audit, and **Check updates** (`GET /account/updates`) which verifies signed metadata and refuses to apply files.
 

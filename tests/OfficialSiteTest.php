@@ -133,6 +133,103 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('inspect_updates', $account->body());
     }
 
+    public function testInspectUpdateFailuresDoNotMutateArtifactsOrCommunity(): void
+    {
+        $repo = dirname(__DIR__);
+        $filesDir = sys_get_temp_dir() . '/im-www-upd-' . bin2hex(random_bytes(3));
+        mkdir($filesDir, 0775, true);
+        $unsignedSrc = $repo . '/apps/www/data/files/community-0.1.0-dev.txt';
+        $signedSrc = $repo . '/apps/www/data/files/community-0.1.1.txt';
+        copy($unsignedSrc, $filesDir . '/' . Hub::FILES['community-notes']);
+        copy($signedSrc, $filesDir . '/' . Hub::FILES['community-0.1.1']);
+        $community = sys_get_temp_dir() . '/im-www-community-' . bin2hex(random_bytes(3));
+        mkdir($community . '/var', 0775, true);
+        file_put_contents($community . '/var/marker.txt', 'community-core-safe');
+        file_put_contents($community . '/.env', "APP_KEY=sentinel\n");
+
+        $pair = Signer::generateKeypair();
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $hub = new Hub(
+            $pdo,
+            new PasswordHasher(),
+            new Store($pdo),
+            'hmac-inspect-fail',
+            $filesDir,
+            $pair['private'],
+            $pair['public'],
+        );
+
+        $signedPath = $filesDir . '/' . Hub::FILES['community-0.1.1'];
+        $unsignedPath = $filesDir . '/' . Hub::FILES['community-notes'];
+        $beforeSigned = (string) file_get_contents($signedPath);
+        $beforeUnsigned = (string) file_get_contents($unsignedPath);
+
+        // Happy inspect: verify only
+        $ok = $hub->inspectUpdates(null);
+        $this->assertSame('refused_auto_install', $ok['unsigned']);
+        $this->assertSame('verified_not_applied', $ok['signed']);
+        $this->assertFalse($ok['applied']);
+        $this->assertSame($beforeSigned, (string) file_get_contents($signedPath));
+        $this->assertSame($beforeUnsigned, (string) file_get_contents($unsignedPath));
+
+        // Frozen metadata + tampered artifact => SHA-256 mismatch; SafeApplier must not write
+        $frozen = $hub->updates()['signed_release'];
+        $install = sys_get_temp_dir() . '/im-www-install-' . bin2hex(random_bytes(3));
+        mkdir($install, 0775, true);
+        file_put_contents($install . '/NOTES.txt', 'old-notes');
+        file_put_contents($install . '/VERSION', '0.1.0');
+        file_put_contents($signedPath, $beforeSigned . "\nTAMPER\n");
+        try {
+            (new SafeApplier())->apply($install, $signedPath, $frozen, $pair['public'], '0.1.0');
+            $this->fail('tampered artifact must refuse');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('SHA-256', $e->getMessage());
+        }
+        $this->assertSame('old-notes', (string) file_get_contents($install . '/NOTES.txt'));
+        $this->assertSame('0.1.0', (string) file_get_contents($install . '/VERSION'));
+        $this->assertSame([], glob($install . '.bak-*') ?: []);
+        file_put_contents($signedPath, $beforeSigned);
+
+        // Wrong trust key on inspect: failed signature, no apply, artifacts unchanged
+        $other = Signer::generateKeypair();
+        $wrongKeyHub = new Hub(
+            $pdo,
+            new PasswordHasher(),
+            new Store($pdo),
+            'hmac-inspect-fail',
+            $filesDir,
+            $pair['private'],
+            $other['public'],
+        );
+        $badSig = $wrongKeyHub->inspectUpdates(null);
+        $this->assertSame('refused_auto_install', $badSig['unsigned']);
+        $this->assertStringStartsWith('failed:', $badSig['signed']);
+        $this->assertStringContainsString('signature', strtolower($badSig['signed']));
+        $this->assertFalse($badSig['applied']);
+        $this->assertSame($beforeSigned, (string) file_get_contents($signedPath));
+        $this->assertSame($beforeUnsigned, (string) file_get_contents($unsignedPath));
+        $this->assertSame('community-core-safe', (string) file_get_contents($community . '/var/marker.txt'));
+        $this->assertSame("APP_KEY=sentinel\n", (string) file_get_contents($community . '/.env'));
+
+        // Unsigned channel must never be auto-applied
+        $updates = $hub->updates();
+        $this->assertFalse($updates['latest']['signed']);
+        try {
+            PackageVerifier::assertSafeToApply(
+                $updates['latest'],
+                $unsignedPath,
+                $pair['public'],
+                '0.1.0',
+            );
+            $this->fail('unsigned must refuse');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('Unsigned', $e->getMessage());
+        }
+        $this->assertSame($beforeUnsigned, (string) file_get_contents($unsignedPath));
+        $this->assertSame('community-core-safe', (string) file_get_contents($community . '/var/marker.txt'));
+    }
+
     public function testFakeBuyIssueActivateDownloadAndTraversalDenied(): void
     {
         $token = (new Csrf())->token();
