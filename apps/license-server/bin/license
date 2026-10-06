@@ -141,5 +141,25 @@ if ($command === 'purge') {
     exit(0);
 }
 
-echo "Usage: php bin/license [keys|issue|offline|revoke|purge]\n";
+if ($command === 'status') {
+    $id = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--id=')) {
+            $id = substr($arg, 5);
+        }
+    }
+    if ($id === '') {
+        fwrite(STDERR, "Usage: php bin/license status --id=lic_1\n");
+        exit(1);
+    }
+    try {
+        echo json_encode($store->status($id), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), "\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
+echo "Usage: php bin/license [keys|issue|offline|revoke|purge|status]\n";
 exit(1);

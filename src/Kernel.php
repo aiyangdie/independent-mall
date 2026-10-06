@@ -104,6 +104,18 @@ final class Kernel
     private function registerRoutes(): void
     {
         $this->router->add('GET', '/healthz', fn () => Response::json($this->health()));
+        $this->router->add('GET', '#^/legal/(refunds|prohibited|disclaimer)$#', function (Request $request, array $m) {
+            $kind = $m[1];
+            $titles = [
+                'refunds' => 'Refunds',
+                'prohibited' => 'Prohibited goods',
+                'disclaimer' => 'Disclaimer',
+            ];
+            return $this->page('store/legal', [
+                'title' => $titles[$kind] ?? 'Legal',
+                'kind' => $kind,
+            ]);
+        });
         $this->router->add('GET', '/install', function () {
             $installer = new Installer($this->config->root());
             if ($installer->isInstalled()) {

@@ -33,7 +33,12 @@
 <?= $content ?? '' ?>
 </main>
 <footer class="bar muted">
-    <p>Community Edition. No license server required. Working name only; copyright holder TBD.</p>
+    <nav aria-label="Legal">
+        <a href="/legal/refunds">Refunds</a>
+        <a href="/legal/prohibited">Prohibited goods</a>
+        <a href="/legal/disclaimer">Disclaimer</a>
+    </nav>
+    <p>Community Edition. No license server required. Working name only; copyright holder TBD. Legal pages are drafts.</p>
 </footer>
 </body>
 </html>

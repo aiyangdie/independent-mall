@@ -68,4 +68,9 @@ if ($st !== 409 && $st !== 200) {
     fwrite(STDERR, "install page expected 409 or 200 got $st\n");
     exit(1);
 }
+[$st, $legal] = fetchStore($base . '/legal/prohibited', $cookie);
+if ($st !== 200 || !str_contains($legal, 'account trading') || !str_contains($legal, 'Draft only')) {
+    fwrite(STDERR, "legal page failed $st\n");
+    exit(1);
+}
 echo "HTTP storefront smoke ok\n";

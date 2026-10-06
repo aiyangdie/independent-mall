@@ -364,6 +364,29 @@ final class LicenseTest extends TestCase
         }
     }
 
+    public function testStatusIsReadOnlyWithoutSecrets(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $nonce = $store->issue('lic_st', 'token-status-x', ['storefront_notice'], gmdate('c', time() + 86400));
+        $before = $store->status('lic_st');
+        $this->assertFalse($before['bound']);
+        $this->assertTrue($before['has_activation_nonce']);
+        $this->assertFalse($before['revoked']);
+        $this->assertSame(['storefront_notice'], $before['entitlements']);
+        $encoded = json_encode($before);
+        $this->assertIsString($encoded);
+        $this->assertStringNotContainsString('token-status-x', $encoded);
+        $this->assertStringNotContainsString($nonce, $encoded);
+        $this->assertArrayNotHasKey('token_hash', $before);
+        $store->activate('lic_st', 'token-status-x', 'shop-status-1', $nonce);
+        $after = $store->status('lic_st');
+        $this->assertTrue($after['bound']);
+        $this->assertSame('shop-status-1', $after['instance_id']);
+        $this->assertFalse($after['has_activation_nonce']);
+    }
+
     public function testLicenseServerLoadsFromItsOwnBootstrap(): void
     {
         $root = $this->root() . '/apps/license-server';

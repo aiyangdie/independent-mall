@@ -59,6 +59,8 @@ final class LayoutCssTest extends TestCase
         $layout = (string) file_get_contents($root . '/layout.php');
         $this->assertStringContainsString('Skip to content', $layout);
         $this->assertStringContainsString('aria-label="Operations"', $layout);
+        $this->assertStringContainsString('aria-label="Legal"', $layout);
+        $this->assertStringContainsString('/legal/prohibited', $layout);
         $this->assertStringContainsString('id="main"', $layout);
     }
 }

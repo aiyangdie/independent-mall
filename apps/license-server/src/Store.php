@@ -149,6 +149,34 @@ final class Store
     }
 
     /**
+     * Read-only operator summary. Never returns token or nonce material.
+     *
+     * @return array<string, mixed>
+     */
+    public function status(string $id): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM licenses WHERE id = :i');
+        $stmt->execute(['i' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            throw new \DomainException('Unknown license.');
+        }
+        $ents = json_decode((string) $row['entitlements'], true);
+        $instance = (string) ($row['instance_id'] ?? '');
+        return [
+            'license_id' => (string) $row['id'],
+            'bound' => $instance !== '',
+            'instance_id' => $instance,
+            'revoked' => (int) $row['revoked'] === 1,
+            'expires_at' => (string) $row['expires_at'],
+            'grace_days' => (int) $row['grace_days'],
+            'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
+            'created_at' => (string) $row['created_at'],
+            'has_activation_nonce' => (string) ($row['activation_nonce_hash'] ?? '') !== '',
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function refresh(string $id, string $token, string $instanceId): array

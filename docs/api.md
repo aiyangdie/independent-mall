@@ -7,6 +7,7 @@ All state-changing POST bodies require `_csrf`. JSON health check is unauthentic
 | GET/POST | `/install` | empty host only; 409 after install |
 | GET | `/healthz` | public JSON: edition, license_required=false, network_required=false |
 | GET | `/` | public catalog |
+| GET | `/legal/refunds` `/legal/prohibited` `/legal/disclaimer` | public draft notices (counsel not reviewed) |
 | GET | `/search?q=` | public search of published listings |
 | GET | `/c/{slug}` | public category |
 | GET | `/p/{slug}` | public product |

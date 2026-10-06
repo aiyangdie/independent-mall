@@ -101,6 +101,18 @@ final class AppTest extends TestCase
         $this->assertSame(200, $home->status());
         $this->assertStringContainsString('lawful trade', $home->body());
         $this->assertStringNotContainsString('彩虹', $home->body());
+        $this->assertStringContainsString('/legal/refunds', $home->body());
+        $this->assertStringContainsString('/legal/prohibited', $home->body());
+        $this->assertStringContainsString('aria-label="Legal"', $home->body());
+        foreach (['/legal/refunds', '/legal/prohibited', '/legal/disclaimer'] as $path) {
+            $legal = $kernel->handle(new Request('GET', $path, [], [], [], []));
+            $this->assertSame(200, $legal->status(), $path);
+            $this->assertStringContainsString('Draft only', $legal->body());
+            $this->assertStringContainsString('Counsel has not reviewed', $legal->body());
+            $this->assertStringNotContainsString('代刷', $legal->body());
+        }
+        $ban = $kernel->handle(new Request('GET', '/legal/prohibited', [], [], [], []));
+        $this->assertStringContainsString('account trading', $ban->body());
 
         $health = $kernel->handle(new Request('GET', '/healthz', [], [], [], []));
         $this->assertSame(200, $health->status());
