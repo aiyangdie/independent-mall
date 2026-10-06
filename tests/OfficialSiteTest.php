@@ -62,6 +62,11 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('callout-fake', $pricing->body());
         $this->assertStringContainsString('callout-legal', $pricing->body());
         $this->assertStringContainsString('/legal/disclaimer', $pricing->body());
+        $this->assertStringContainsString('Demo path (Fake only)', $pricing->body());
+        $this->assertStringContainsString('fake_completed', $pricing->body());
+        $this->assertStringContainsString('fake_renewed', $pricing->body());
+        $this->assertStringContainsString('/admin/modules', $pricing->body());
+        $this->assertStringContainsString('/docs', $pricing->body());
         $changelog = $this->site->handle(new Request('GET', '/changelog', [], [], [], []));
         $this->assertStringContainsString('0.1.1-dev', $changelog->body());
         $this->assertStringContainsString('Fake', $changelog->body());
@@ -71,6 +76,8 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('docs/license-server-data.md', $docs->body());
         $this->assertStringContainsString('never applies packages', $docs->body());
         $this->assertStringContainsString('docs/ops.md', $docs->body());
+        $this->assertStringContainsString('Pricing demo path', $docs->body());
+        $this->assertStringContainsString('renew --order', $docs->body());
         $editions = $this->site->handle(new Request('GET', '/editions', [], [], [], []));
         $this->assertStringContainsString('table-wrap', $editions->body());
         $refunds = $this->site->handle(new Request('GET', '/legal/refunds', [], [], [], []));

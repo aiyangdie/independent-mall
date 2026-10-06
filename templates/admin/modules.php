@@ -20,6 +20,12 @@ ob_start();
             <p>Verified locally. License <code><?= $e((string) $local['license_id']) ?></code>
                 bound to <code><?= $e((string) $local['instance_id']) ?></code>.
                 Expires <?= $e((string) $local['expires_at']) ?>.
+                <?php if (($local['product_code'] ?? '') !== ''): ?>
+                    Product <code><?= $e((string) $local['product_code']) ?>@<?= $e((string) ($local['product_version'] ?? '')) ?></code>.
+                <?php endif; ?>
+                <?php if (($local['customer_id'] ?? '') !== ''): ?>
+                    Issuer customer <code><?= $e((string) $local['customer_id']) ?></code>.
+                <?php endif; ?>
                 Entitlements: <?= $e(implode(', ', $local['entitlements'] ?? [])) ?>.
                 Status: <?= !empty($local['revoked']) ? 'revoked (commercial modules stay off; checkout still works)' : 'active' ?></p>
         <?php else: ?>

@@ -177,6 +177,9 @@ final class ModuleHostTest extends TestCase
             'license_id' => 'lic_kernel',
             'instance_id' => 'shop-test',
             'entitlements' => ['storefront_notice'],
+            'product_code' => 'sample-notice',
+            'product_version' => '1.0.0',
+            'customer_id' => 'cust_demo',
             'issued_at' => gmdate('c', $now),
             'last_refresh_at' => gmdate('c', $now),
             'expires_at' => gmdate('c', $now + 86400),
@@ -200,6 +203,9 @@ final class ModuleHostTest extends TestCase
         $this->assertStringContainsString('lic_kernel', $page->body());
         $this->assertStringContainsString('shop-test', $page->body());
         $this->assertStringContainsString('bound to', $page->body());
+        $this->assertStringContainsString('sample-notice@1.0.0', $page->body());
+        $this->assertStringContainsString('Issuer customer', $page->body());
+        $this->assertStringContainsString('cust_demo', $page->body());
         $audit = $this->pdo->query("SELECT action, entity_id, meta FROM audit_logs WHERE action = 'license.store'")->fetch(\PDO::FETCH_ASSOC);
         $this->assertIsArray($audit);
         $this->assertSame('lic_kernel', $audit['entity_id']);

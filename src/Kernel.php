@@ -330,6 +330,9 @@ final class Kernel
             'license_id' => (string) ($payload['license_id'] ?? ''),
             'instance_id' => (string) ($payload['instance_id'] ?? ''),
             'expires_at' => (string) ($payload['expires_at'] ?? ''),
+            'product_code' => (string) ($payload['product_code'] ?? ''),
+            'product_version' => (string) ($payload['product_version'] ?? ''),
+            'customer_id' => (string) ($payload['customer_id'] ?? ''),
             'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
             'revoked' => !empty($payload['revoked']),
         ];

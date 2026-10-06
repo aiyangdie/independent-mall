@@ -18,8 +18,9 @@
 
 <h2>Commercial license issuer (separate process)</h2>
 <ul>
-    <li><code>apps/license-server/README.md</code> — keys, product/version catalog, issue, activate, renew, revoke, purge</li>
+    <li><code>apps/license-server/README.md</code> — keys, product/version catalog, fulfill, renew --order, activate, revoke, purge</li>
     <li><code>docs/license-server-data.md</code> — fields stored, retention, what is never collected</li>
+    <li><a href="/pricing">Pricing demo path</a> — Fake buy → issuer order → renew → paste into Community <code>/admin/modules</code></li>
 </ul>
 
 <p class="callout callout-fake" role="status">
