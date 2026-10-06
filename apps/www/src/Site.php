@@ -91,6 +91,7 @@ final class Site
                 $method === 'POST' && $path === '/account/revoke' => $this->revoke($request),
                 $method === 'POST' && $path === '/account/ticket' => $this->ticket($request),
                 $method === 'GET' && $path === '/account/download' => $this->download($request),
+                $method === 'POST' && $path === '/account/download/revoke' => $this->revokeDownload($request),
                 default => $this->page('not-found', ['title' => 'Not found'], 404),
             };
         } catch (\Throwable $e) {
@@ -158,6 +159,7 @@ final class Site
             'tickets' => $this->hub->tickets($uid),
             'security' => $this->hub->securityLog($uid),
             'files' => $files,
+            'active_tokens' => $this->hub->activeDownloadTokens($uid),
             'downloads' => $this->hub->downloadAudits($uid),
             'flash' => (string) ($_SESSION['www_flash'] ?? ''),
         ]);
@@ -235,6 +237,14 @@ final class Site
             'Cache-Control' => 'no-store',
             'Content-Disposition' => 'attachment; filename="' . basename($path) . '"',
         ]);
+    }
+
+    private function revokeDownload(Request $request): Response
+    {
+        $uid = $this->requireUser($request);
+        $this->hub->revokeDownloadToken($uid, $request->post('jti'));
+        $_SESSION['www_flash'] = 'Download link revoked.';
+        return Response::redirect('/account');
     }
 
     private function requireUser(Request $request): int

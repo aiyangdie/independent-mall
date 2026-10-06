@@ -56,12 +56,28 @@ $flash = $e((string) ($data['flash'] ?? ''));
     <button type="submit">Mark revoked (demo)</button>
 </form>
 
-<h2>Downloads (10-minute HMAC links)</h2>
+<h2>Downloads (single-use, 10-minute links)</h2>
+<p>Each link works once until you open the account page again for a fresh token. Revoke unused links below. Full tokens are not written to the security log.</p>
 <ul>
 <?php foreach ($data['files'] as $id => $token): ?>
     <li><a href="/account/download?token=<?= $e((string) $token) ?>"><?= $e((string) $id) ?></a></li>
 <?php endforeach; ?>
 </ul>
+<?php if (!empty($data['active_tokens'])): ?>
+<ul>
+<?php foreach ($data['active_tokens'] as $tok): ?>
+    <li><code><?= $e((string) $tok['file_id']) ?></code>
+        uses <?= (int) $tok['use_count'] ?>/<?= (int) $tok['max_uses'] ?>
+        · expires <?= $e(gmdate('c', (int) $tok['expires_at'])) ?>
+        <form method="post" action="/account/download/revoke" style="display:inline">
+            <?= $csrf->field() ?>
+            <input type="hidden" name="jti" value="<?= $e((string) $tok['jti']) ?>">
+            <button type="submit">Revoke</button>
+        </form>
+    </li>
+<?php endforeach; ?>
+</ul>
+<?php endif; ?>
 
 <h2>Download audit</h2>
 <ul>

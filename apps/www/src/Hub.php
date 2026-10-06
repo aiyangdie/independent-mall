@@ -85,6 +85,18 @@ final class Hub
                 created_at TEXT NOT NULL
             )'
         );
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS download_tokens (
+                jti TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                file_id TEXT NOT NULL,
+                expires_at INTEGER NOT NULL,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                use_count INTEGER NOT NULL DEFAULT 0,
+                revoked INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )'
+        );
     }
 
     public function register(string $email, string $password): int
@@ -274,26 +286,105 @@ final class Hub
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    public function downloadToken(int $userId, string $fileId): string
+    /**
+     * Issues or reuses a short-lived single-use download link.
+     * Token format: fileId.exp.jti.hmac — jti is stored server-side so links can be revoked and use-limited.
+     * Security logs never store the full token.
+     */
+    public function downloadToken(int $userId, string $fileId, int $ttlSeconds = 600, int $maxUses = 1): string
     {
         if (!isset(self::FILES[$fileId])) {
             throw new \InvalidArgumentException('Unknown file.');
         }
-        $exp = (string) (time() + 600);
-        $sig = hash_hmac('sha256', $userId . '|' . $fileId . '|' . $exp, $this->hmacKey);
-        return $fileId . '.' . $exp . '.' . $sig;
+        if ($ttlSeconds < 60 || $ttlSeconds > 86400) {
+            throw new \InvalidArgumentException('Download TTL is not acceptable.');
+        }
+        if ($maxUses < 1 || $maxUses > 20) {
+            throw new \InvalidArgumentException('Download max uses is not acceptable.');
+        }
+        $now = time();
+        $stmt = $this->pdo->prepare(
+            'SELECT jti, expires_at FROM download_tokens
+             WHERE user_id = :u AND file_id = :f AND revoked = 0 AND use_count < max_uses AND expires_at > :n
+             ORDER BY created_at DESC LIMIT 1'
+        );
+        $stmt->execute(['u' => $userId, 'f' => $fileId, 'n' => $now]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($existing)) {
+            return $this->encodeDownloadToken($userId, $fileId, (int) $existing['expires_at'], (string) $existing['jti']);
+        }
+        $jti = bin2hex(random_bytes(16));
+        $exp = $now + $ttlSeconds;
+        $this->pdo->prepare(
+            'INSERT INTO download_tokens (jti, user_id, file_id, expires_at, max_uses, use_count, revoked, created_at)
+             VALUES (:j, :u, :f, :e, :m, 0, 0, :t)'
+        )->execute([
+            'j' => $jti,
+            'u' => $userId,
+            'f' => $fileId,
+            'e' => $exp,
+            'm' => $maxUses,
+            't' => gmdate('c'),
+        ]);
+        $this->log($userId, 'download_token_issue', ['file_id' => $fileId, 'jti' => $jti, 'max_uses' => $maxUses]);
+        return $this->encodeDownloadToken($userId, $fileId, $exp, $jti);
+    }
+
+    public function revokeDownloadToken(int $userId, string $jti): void
+    {
+        $jti = trim($jti);
+        if ($jti === '' || preg_match('/^[a-f0-9]{32}$/', $jti) !== 1) {
+            throw new \InvalidArgumentException('Unknown download token.');
+        }
+        $stmt = $this->pdo->prepare('SELECT user_id FROM download_tokens WHERE jti = :j');
+        $stmt->execute(['j' => $jti]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row) || (int) $row['user_id'] !== $userId) {
+            throw new \DomainException('Download token does not belong to this account.');
+        }
+        $this->pdo->prepare('UPDATE download_tokens SET revoked = 1 WHERE jti = :j')->execute(['j' => $jti]);
+        $this->log($userId, 'download_token_revoke', ['jti' => $jti]);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function activeDownloadTokens(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT jti, file_id, expires_at, max_uses, use_count, created_at FROM download_tokens
+             WHERE user_id = :u AND revoked = 0 AND use_count < max_uses AND expires_at > :n
+             ORDER BY created_at DESC'
+        );
+        $stmt->execute(['u' => $userId, 'n' => time()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function resolveDownload(int $userId, string $token): string
     {
         $parts = explode('.', $token);
-        if (count($parts) !== 3) {
+        if (count($parts) !== 4) {
             $this->auditDownload($userId, 'invalid', false);
             throw new \DomainException('Bad download token.');
         }
-        [$fileId, $exp, $sig] = $parts;
-        $expect = hash_hmac('sha256', $userId . '|' . $fileId . '|' . $exp, $this->hmacKey);
-        if (!hash_equals($expect, $sig) || time() > (int) $exp || !isset(self::FILES[$fileId])) {
+        [$fileId, $exp, $jti, $sig] = $parts;
+        $expect = hash_hmac('sha256', $userId . '|' . $fileId . '|' . $exp . '|' . $jti, $this->hmacKey);
+        if (!hash_equals($expect, $sig) || !isset(self::FILES[$fileId])) {
+            $this->auditDownload($userId, $fileId, false);
+            throw new \DomainException('Download token refused.');
+        }
+        $stmt = $this->pdo->prepare('SELECT * FROM download_tokens WHERE jti = :j');
+        $stmt->execute(['j' => $jti]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (
+            !is_array($row)
+            || (int) $row['user_id'] !== $userId
+            || (string) $row['file_id'] !== $fileId
+            || (int) $row['expires_at'] !== (int) $exp
+            || (int) $row['revoked'] === 1
+            || time() > (int) $row['expires_at']
+            || (int) $row['use_count'] >= (int) $row['max_uses']
+        ) {
             $this->auditDownload($userId, $fileId, false);
             throw new \DomainException('Download token refused.');
         }
@@ -306,7 +397,17 @@ final class Hub
             $this->auditDownload($userId, $fileId, false);
             throw new \DomainException('File missing.');
         }
+        $bump = $this->pdo->prepare(
+            'UPDATE download_tokens SET use_count = use_count + 1
+             WHERE jti = :j AND revoked = 0 AND use_count < max_uses AND expires_at >= :n'
+        );
+        $bump->execute(['j' => $jti, 'n' => time()]);
+        if ($bump->rowCount() !== 1) {
+            $this->auditDownload($userId, $fileId, false);
+            throw new \DomainException('Download token refused.');
+        }
         $this->auditDownload($userId, $fileId, true);
+        $this->log($userId, 'download_ok', ['file_id' => $fileId, 'jti' => $jti]);
         return $realFile;
     }
 
@@ -318,6 +419,12 @@ final class Hub
         $stmt = $this->pdo->prepare('SELECT * FROM download_audit WHERE user_id = :u ORDER BY id DESC LIMIT 50');
         $stmt->execute(['u' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    private function encodeDownloadToken(int $userId, string $fileId, int $exp, string $jti): string
+    {
+        $sig = hash_hmac('sha256', $userId . '|' . $fileId . '|' . $exp . '|' . $jti, $this->hmacKey);
+        return $fileId . '.' . $exp . '.' . $jti . '.' . $sig;
     }
 
     /**

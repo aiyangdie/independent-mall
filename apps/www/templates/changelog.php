@@ -5,7 +5,8 @@
 </p>
 <ol>
     <li>
-        <strong>0.1.1-dev</strong> — License issuer purge + data inventory; official-site license status (bound/revoked);
+        <strong>0.1.1-dev</strong> — Single-use revocable download links on the customer center; license issuer renew;
+        register terms checkbox; license status recent_audit; purge + data inventory; license status (bound/revoked);
         admin audit action filter; pricing Fake-only / counsel callouts; focus and reduced-motion CSS anchors;
         empty-tree install smoke in PHPUnit. Still not a production release.
     </li>

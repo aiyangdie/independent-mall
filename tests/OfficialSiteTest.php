@@ -203,12 +203,28 @@ final class OfficialSiteTest extends TestCase
         $again = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertStringContainsString('Need invoice', $again->body());
 
-        preg_match('/download\?token=([a-z0-9-]+\.[0-9]+\.[a-f0-9]+)/', $again->body(), $dl);
+        preg_match('/download\?token=([a-z0-9-]+\.[0-9]+\.[a-f0-9]+\.[a-f0-9]+)/', $again->body(), $dl);
         $this->assertNotEmpty($dl);
         $file = $this->site->handle(new Request('GET', '/account/download', ['token' => $dl[1]], [], [], []));
         $this->assertSame(200, $file->status());
         $this->assertStringContainsString('must not be executed', $file->body());
         $this->assertSame('no-store', $file->header('Cache-Control'));
+        $reuse = $this->site->handle(new Request('GET', '/account/download', ['token' => $dl[1]], [], [], []));
+        $this->assertSame(400, $reuse->status());
+        $this->assertStringContainsString('Download token refused', $reuse->body());
+
+        $freshAccount = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        preg_match('/download\?token=([a-z0-9-]+\.[0-9]+\.[a-f0-9]+\.[a-f0-9]+)/', $freshAccount->body(), $dl2);
+        $this->assertNotEmpty($dl2);
+        preg_match('/name="jti" value="([a-f0-9]{32})"/', $freshAccount->body(), $jti);
+        $this->assertNotEmpty($jti);
+        $this->site->handle(new Request('POST', '/account/download/revoke', [], [
+            '_csrf' => $token,
+            'jti' => $jti[1],
+        ], [], []));
+        $afterRevoke = $this->site->handle(new Request('GET', '/account/download', ['token' => $dl2[1]], [], [], []));
+        $this->assertSame(400, $afterRevoke->status());
+        $this->assertStringContainsString('download_token_revoke', $this->site->handle(new Request('GET', '/account', [], [], [], []))->body());
 
         $bad = $this->site->handle(new Request('GET', '/account/download', ['token' => '../sample-notice'], [], [], []));
         $this->assertSame(400, $bad->status());
@@ -216,6 +232,8 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('Download audit', $audited->body());
         $this->assertStringContainsString('allowed', $audited->body());
         $this->assertStringContainsString('denied', $audited->body());
+        $this->assertStringContainsString('single-use', $audited->body());
+        $this->assertStringNotContainsString($dl[1], $audited->body());
     }
 
     public function testCommunitySrcDoesNotImportOfficialSite(): void

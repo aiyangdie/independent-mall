@@ -12,6 +12,6 @@ Status is only marked done after tests or HTTP checks in that environment.
 | 5 | Installer, deploy/upgrade docs, release checklist | In progress locally: empty-tree install smoke + health/catalog; deploy.md; backup/restore; release:scan. Physical spare machine and NIC unplug not signed off |
 | 6 | Commercial module seam + sample plugin | In progress locally: Kernel FileLicenseGate + `/admin/license`; PHPUnit still OK with `modules/commercial` removed (one skip). `src/` must not import commercial classes |
 | 7 | License server | In progress locally: renew (CLI/POST); CLI `status --id=` with recent_audit; revoke + purge; dashboard License audit; license-server-data.md |
-| 8 | Public marketing/account site | In progress locally: docs page lists deploy + license-server-data; changelog/pricing Fake-only; license status; legal drafts. No production auto-updater or counsel sign-off |
+| 8 | Public marketing/account site | In progress locally: single-use revocable downloads; docs + Fake purchase + tickets; changelog/pricing Fake-only; legal drafts. No production auto-updater or counsel sign-off |
 
 Local URLs used in development: `http://127.0.0.1:8090/` (does not bind to the legacy shop on 8080).
