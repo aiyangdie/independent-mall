@@ -19,7 +19,8 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "IndependentMall\\Tests\\": "tests/"
+      "IndependentMall\\Tests\\": "tests/",
+      "IndependentMall\\LicenseServer\\": "apps/license-server/src/"
     }
   },
   "scripts": {

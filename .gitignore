@@ -1,5 +1,8 @@
 /.env
-/var/installed.json
+/var/license.json
+/var/license-public.pem
+/apps/license-server/var/*
+!/apps/license-server/var/.gitkeep
 /var/data/*.sqlite
 /var/data/*.sqlite-journal
 /var/logs/*

@@ -13,6 +13,17 @@ ob_start();
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>
+    <form method="post" action="/admin/license" class="card">
+        <?= $csrf ?>
+        <h2>Offline license document</h2>
+        <p class="muted">Paste a signed JSON document and the matching public key. The shop never stores a private key and does not run code from the license server.</p>
+        <label>Public key PEM <textarea name="public_pem" rows="6"></textarea></label>
+        <label>Signed license JSON <textarea name="license_json" rows="8" required></textarea></label>
+        <button type="submit">Verify and store locally</button>
+    </form>
+    <?php if (!empty($license_server)): ?>
+        <p class="muted">Configured LICENSE_SERVER_URL is not contacted from the storefront. Refresh belongs on an operator schedule.</p>
+    <?php endif; ?>
     <?php if ($modules === []): ?>
         <p>No optional modules were discovered under <code>modules/*/module.php</code>.</p>
     <?php endif; ?>

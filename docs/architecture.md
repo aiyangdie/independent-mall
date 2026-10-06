@@ -40,4 +40,4 @@ Every network dependency sits behind an interface (`Mailer`, `PaymentGateway`, `
 
 ## Community vs commercial
 
-Community Core never calls a license server. Commercial modules may verify a locally stored signed license. If the license server is down, Community features keep working.
+Community Core never calls a license server on storefront requests. Commercial modules may verify a locally stored signed license (`var/license.json` + public key). If the license server is down, Community features keep working; already-issued documents honor a 14-day grace window after expiry unless revoked or tampered.

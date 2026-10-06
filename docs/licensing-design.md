@@ -27,7 +27,7 @@ Distributed under a commercial agreement. Activation:
 5. Refresh in admin cron; 14-day grace on network failure.
 6. Expiry disables commercial packages only.
 
-Signature plan: OpenSSL Ed25519. This machine currently lacks `ext-sodium`; implementation must fail closed if Ed25519 is unavailable rather than XOR a homemade MAC and call it a license.
+Signature: OpenSSL Ed25519 (`OPENSSL_KEYTYPE_ED25519` on PHP 8.5). If Ed25519 is unavailable the issuer and verifier fail closed. Private keys live only under `apps/license-server/var/` (gitignored). Community Core verifies `var/license.json` with a public key and never phones home on storefront requests. After `expires_at`, `grace_days` (default 14) still allow already-issued entitlements using `last_refresh_at`. Revocation and signature tampering deny commercial modules only.
 
 Update packages: version, engine constraints, SQL migrations, file list, SHA-256, signature, notes, rollback. Verify hash and signature before replace. Never `eval` a payload from the license API.
 

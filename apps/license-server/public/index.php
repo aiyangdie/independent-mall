@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+use IndependentMall\LicenseServer\Signer;
+use IndependentMall\LicenseServer\Store;
+
+header('Content-Type: application/json; charset=UTF-8');
+header('X-Content-Type-Options: nosniff');
+
+$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+if ($path === '/healthz') {
+    echo json_encode(['status' => 'ok', 'role' => 'license-server', 'exec_php' => false]);
+    exit;
+}
+
+$var = $root . '/var';
+$pdo = new PDO('sqlite:' . $var . '/licenses.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$store = new Store($pdo);
+
+if ($method === 'POST' && $path === '/activate') {
+    $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    try {
+        $payload = $store->activate(
+            (string) ($body['license_id'] ?? ''),
+            (string) ($body['token'] ?? ''),
+            (string) ($body['instance_id'] ?? ''),
+        );
+        $private = (string) file_get_contents($var . '/private.pem');
+        $doc = Signer::sign($payload, $private);
+        echo json_encode($doc, JSON_UNESCAPED_SLASHES);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+http_response_code(404);
+echo json_encode(['error' => 'not found']);

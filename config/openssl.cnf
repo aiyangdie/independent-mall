@@ -1,0 +1,12 @@
+# Minimal OpenSSL 3 config for PHP key generation when the OS has no openssl.cnf.
+config_diagnostics = 0
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_sect
+
+[default_sect]
+activate = 1

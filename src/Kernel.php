@@ -17,7 +17,7 @@ use IndependentMall\Catalog\ImageStore;
 use IndependentMall\Catalog\ProductCatalog;
 use IndependentMall\Catalog\ProhibitedGoodsPolicy;
 use IndependentMall\Install\Installer;
-use IndependentMall\Modules\AbsentLicense;
+use IndependentMall\License\FileLicenseGate;
 use IndependentMall\Modules\ModuleHost;
 use IndependentMall\Http\Csrf;
 use IndependentMall\Http\ShopFront;
@@ -256,7 +256,7 @@ final class Kernel
 
     private function modules(): ModuleHost
     {
-        return new ModuleHost($this->pdo, $this->config->root(), new AbsentLicense(), new AuditLogger($this->pdo));
+        return new ModuleHost($this->pdo, $this->config->root(), FileLicenseGate::fromRoot($this->config->root()), new AuditLogger($this->pdo));
     }
 
     private function catalog(): ProductCatalog
@@ -596,7 +596,32 @@ final class Kernel
                 'csrf' => $this->csrf->field(),
                 'error' => '',
                 'user' => $this->auth->user(),
+                'license_server' => $this->config->get('LICENSE_SERVER_URL'),
             ]);
+        });
+        $this->router->add('POST', '/admin/license', function (Request $request) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $root = $this->config->root();
+            $json = trim($request->post('license_json'));
+            $pem = trim($request->post('public_pem'));
+            if ($pem !== '') {
+                if (!str_contains($pem, 'BEGIN PUBLIC KEY') && !str_contains($pem, 'BEGIN OPENSSH')) {
+                    return Response::html('Public key PEM is invalid.', 422);
+                }
+                file_put_contents($root . '/var/license-public.pem', $pem);
+            }
+            file_put_contents($root . '/var/license.json', $json);
+            $gate = FileLicenseGate::fromRoot($root);
+            if (!$gate instanceof FileLicenseGate || $gate->payload() === null) {
+                @unlink($root . '/var/license.json');
+                return Response::html('License document failed verification. Community shop is unchanged.', 422);
+            }
+            return Response::redirect('/admin/modules');
         });
         $this->router->add('POST', '#^/admin/modules/([a-z0-9-]+)/(migrate|enable|disable|uninstall)$#', function (Request $request, array $m) {
             if ($deny = $this->requireAdmin()) {

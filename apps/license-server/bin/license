@@ -1,0 +1,97 @@
+<?php
+
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+use IndependentMall\LicenseServer\Signer;
+use IndependentMall\LicenseServer\Store;
+
+$var = $root . '/var';
+if (!is_dir($var)) {
+    mkdir($var, 0775, true);
+}
+
+$command = $argv[1] ?? 'help';
+$pdo = new PDO('sqlite:' . $var . '/licenses.sqlite', null, null, [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+]);
+$store = new Store($pdo);
+
+if ($command === 'keys') {
+    if (is_file($var . '/private.pem')) {
+        fwrite(STDERR, "private.pem already exists; refusing to overwrite.\n");
+        exit(1);
+    }
+    $pair = Signer::generateKeypair();
+    file_put_contents($var . '/private.pem', $pair['private']);
+    file_put_contents($var . '/public.pem', $pair['public']);
+    echo "Wrote var/private.pem (keep secret) and var/public.pem (copy to the shop).\n";
+    exit(0);
+}
+
+if ($command === 'issue') {
+    $id = '';
+    $token = bin2hex(random_bytes(16));
+    $ents = ['storefront_notice'];
+    $days = 365;
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--id=')) {
+            $id = substr($arg, 5);
+        } elseif (str_starts_with($arg, '--days=')) {
+            $days = (int) substr($arg, 7);
+        } elseif (str_starts_with($arg, '--entitlements=')) {
+            $ents = array_values(array_filter(explode(',', substr($arg, 15))));
+        }
+    }
+    if ($id === '') {
+        fwrite(STDERR, "Usage: php bin/license issue --id=lic_1 [--days=365]\n");
+        exit(1);
+    }
+    $store->issue($id, $token, $ents, gmdate('c', time() + $days * 86400));
+    echo "Issued {$id}. One-time token (not stored in plaintext): {$token}\n";
+    exit(0);
+}
+
+if ($command === 'offline') {
+    $id = '';
+    $instance = 'offline';
+    $token = '';
+    $out = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--id=')) {
+            $id = substr($arg, 5);
+        } elseif (str_starts_with($arg, '--token=')) {
+            $token = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--instance=')) {
+            $instance = substr($arg, 11);
+        } elseif (str_starts_with($arg, '--out=')) {
+            $out = substr($arg, 6);
+        }
+    }
+    $private = (string) file_get_contents($var . '/private.pem');
+    $payload = $store->activate($id, $token, $instance);
+    $doc = json_encode(Signer::sign($payload, $private), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    if ($out !== '') {
+        file_put_contents($out, $doc);
+        echo "Wrote {$out}\n";
+    } else {
+        echo $doc, "\n";
+    }
+    exit(0);
+}
+
+if ($command === 'revoke') {
+    $id = substr($argv[2] ?? '', 5);
+    if (!str_starts_with($argv[2] ?? '', '--id=')) {
+        fwrite(STDERR, "Usage: php bin/license revoke --id=lic_1\n");
+        exit(1);
+    }
+    $store->revoke($id);
+    echo "Revoked {$id}\n";
+    exit(0);
+}
+
+echo "Usage: php bin/license [keys|issue|offline|revoke]\n";
+exit(1);
