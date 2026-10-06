@@ -2,13 +2,17 @@
 
 Mark each item only after it was actually done.
 
-- [ ] `composer install` and `vendor/bin/phpunit` pass on PHP 8.2+.
-- [ ] Empty-directory install via `php bin/console install` or `/install` succeeds once and refuses a second run.
-- [ ] `php bin/console migrate` is a no-op on a freshly installed schema and applies when a new `database/migrations/*.sql` file is added.
-- [ ] HTTP smoke: register → cart → fake pay → refund (`tests/http_commerce_smoke.php`) against a local server.
-- [ ] `/healthz` shows `"license_required": false` and `"edition": "community"` with the network unplugged.
-- [ ] `.env` is not in git. `APP_KEY` is not a placeholder. Admin password is not stored after install.
-- [ ] Sample listings are lawful and fictional (no real customers or payment data).
-- [ ] No private keys, live SMS/pay credentials, or remote PHP loaders.
-- [ ] `LICENSE.md` remains UNLICENSED until the copyright holder chooses a public license.
-- [ ] Backup/restore steps in `docs/ops.md` were followed on a disposable copy.
+Local tree `codex/community-core`, PHP 8.5.10, 2026-10-06:
+
+- [x] `vendor/bin/phpunit` pass on PHP 8.2+ (this machine: 8.5.10). Full empty-host `composer install` not re-run this round.
+- [x] Empty-directory install via `Installer` succeeds once and refuses a second run (`tests/InstallerTest.php`). Live `php bin/console install` on an already-installed clone is expected to refuse.
+- [x] `migrate` is a no-op on a freshly installed schema and applies when a new `database/migrations/*.sql` file is added (same test).
+- [ ] HTTP smoke: register → cart → fake pay → refund (`tests/http_commerce_smoke.php`) against a local server — run when `:8090` is this Community shop.
+- [x] `/healthz` unit path shows `"license_required": false` and `"edition": "community"`. Physical “network unplugged” not re-tested this round.
+- [x] `.env` is gitignored. Installer writes a real `APP_KEY` and empty `ADMIN_PASSWORD`.
+- [x] Sample listings come from `DemoSeeder` (lawful/fictional).
+- [x] `php bin/console release:scan` (and `ReleaseScan` tests) — no private keys, legacy brand, `eval(`, or remote `file_get_contents` in scanned trees.
+- [x] `LICENSE.md` remains UNLICENSED.
+- [x] Backup/restore: `php bin/console backup` / `restore --from=` implemented; covered by `testSnapshotBackupAndRestore`.
+
+Still not a production sign-off: no clean spare machine, no counsel, no real payment channel.

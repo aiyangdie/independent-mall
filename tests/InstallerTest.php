@@ -74,6 +74,14 @@ final class InstallerTest extends TestCase
         $this->assertStringNotContainsString('correct-horse-battery', $env);
         $lock = json_decode((string) file_get_contents($installer->lockPath()), true);
         $this->assertSame('community', $lock['edition']);
+        $this->assertMatchesRegularExpression('/^ADMIN_PASSWORD=$/m', $env);
+        $migrator = new \IndependentMall\Database\Migrator(
+            \IndependentMall\Database\ConnectionFactory::make(\IndependentMall\Config\Config::load($this->tmp)->get('DATABASE_URL')),
+            $this->tmp . '/database/migrations',
+        );
+        $this->assertSame([], $migrator->migrate());
+        file_put_contents($this->tmp . '/database/migrations/9999_release_ops.sql', "CREATE TABLE IF NOT EXISTS release_ops_probe (id INTEGER PRIMARY KEY);\n");
+        $this->assertSame(['9999_release_ops.sql'], $migrator->migrate());
         $this->expectException(DomainException::class);
         $installer->install([
             'admin_email' => 'other@example.invalid',
@@ -81,6 +89,34 @@ final class InstallerTest extends TestCase
             'admin_password' => 'correct-horse-battery',
             'app_url' => 'http://127.0.0.1:8090',
         ]);
+    }
+
+    public function testSnapshotBackupAndRestore(): void
+    {
+        $installer = new Installer($this->tmp, $this->tmp . '/database/migrations');
+        $installer->install([
+            'admin_email' => 'ops@example.invalid',
+            'admin_password' => 'correct-horse-battery',
+            'app_url' => 'http://127.0.0.1:8090',
+            'database_url' => 'sqlite:///%ROOT%/var/data/app.sqlite',
+        ]);
+        file_put_contents($this->tmp . '/var/uploads/marker.txt', 'keep-me');
+        $snap = new \IndependentMall\Install\Snapshot($this->tmp);
+        $dir = $snap->create();
+        $this->assertFileExists($dir . '/MANIFEST.json');
+        unlink($this->tmp . '/var/data/app.sqlite');
+        unlink($this->tmp . '/var/uploads/marker.txt');
+        $snap->restore($dir);
+        $this->assertFileExists($this->tmp . '/var/data/app.sqlite');
+        $this->assertSame('keep-me', (string) file_get_contents($this->tmp . '/var/uploads/marker.txt'));
+        $this->expectException(\InvalidArgumentException::class);
+        $snap->restore($this->tmp);
+    }
+
+    public function testReleaseScanIsCleanOnCommunityTree(): void
+    {
+        $hits = \IndependentMall\Install\ReleaseScan::findings($this->root);
+        $this->assertSame([], $hits, json_encode($hits));
     }
 
     public function testUninstalledKernelRedirectsAndLocksAfterConfig(): void

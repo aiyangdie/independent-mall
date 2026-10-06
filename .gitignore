@@ -9,6 +9,8 @@
 /var/data/*.sqlite-journal
 /var/logs/*
 /var/sessions/*
+/var/backups/*
+!/var/backups/.gitkeep
 /var/cache/**
 !var/cache/.gitkeep
 var/uploads/*

@@ -79,6 +79,46 @@ if ($command === 'update:apply') {
     exit(0);
 }
 
+if ($command === 'backup') {
+    try {
+        $dir = (new IndependentMall\Install\Snapshot($root))->create();
+        echo "Backup: {$dir}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
+if ($command === 'restore') {
+    $from = '';
+    foreach ($argv as $arg) {
+        if (str_starts_with($arg, '--from=')) {
+            $from = substr($arg, 7);
+        }
+    }
+    try {
+        (new IndependentMall\Install\Snapshot($root))->restore($from);
+        echo "Restored from {$from}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
+if ($command === 'release:scan') {
+    $hits = IndependentMall\Install\ReleaseScan::findings($root);
+    if ($hits === []) {
+        echo "OK no private keys, legacy brand, eval, or remote file_get_contents in scanned trees.\n";
+        exit(0);
+    }
+    foreach ($hits as $hit) {
+        echo 'FAIL ' . $hit['file'] . ' ' . $hit['issue'] . "\n";
+    }
+    exit(1);
+}
+
 $kernel = Kernel::boot($root, false);
 
 if ($command === 'migrate') {
@@ -106,5 +146,5 @@ if ($command === 'demo:seed') {
     exit(0);
 }
 
-echo "Usage: php bin/console [doctor|install|migrate|admin:create|demo:seed|health|update:apply]\n";
+echo "Usage: php bin/console [doctor|install|migrate|admin:create|demo:seed|health|update:apply|backup|restore|release:scan]\n";
 exit(1);

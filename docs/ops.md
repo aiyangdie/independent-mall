@@ -32,8 +32,11 @@ Migrations are incremental. Take a file copy of `var/data/*.sqlite` (or a MySQL 
 ## Backup and restore
 
 1. Stop writers (or enable SQLite backup with the database file closed).
-2. Copy `.env`, `var/data/`, `var/uploads/`, and `var/installed.json`.
-3. Restore those paths on the new host, then `php bin/console migrate` and `php bin/console health`.
+2. `php bin/console backup` copies `.env`, `var/data/`, `var/uploads/`, and `var/installed.json` into `var/backups/snap-*` (gitignored).
+3. Restore on the same or a new host: `php bin/console restore --from=var/backups/snap-...` then `php bin/console migrate` and `php bin/console health`.
+4. Restore paths must stay under `var/backups/` (path traversal is refused).
+
+Manual copy of those same four locations is still valid if you do not use the CLI.
 
 ## Scheduled work
 
