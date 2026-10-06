@@ -61,5 +61,23 @@ if ($method === 'POST' && $path === '/unbind') {
     exit;
 }
 
+if ($method === 'POST' && $path === '/refresh') {
+    $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    try {
+        $payload = $store->refresh(
+            (string) ($body['license_id'] ?? ''),
+            (string) ($body['token'] ?? ''),
+            (string) ($body['instance_id'] ?? ''),
+        );
+        $private = (string) file_get_contents($var . '/private.pem');
+        $doc = Signer::sign($payload, $private);
+        echo json_encode($doc, JSON_UNESCAPED_SLASHES);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 http_response_code(404);
 echo json_encode(['error' => 'not found']);

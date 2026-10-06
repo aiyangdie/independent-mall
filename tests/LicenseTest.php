@@ -14,11 +14,13 @@ use IndependentMall\Http\Csrf;
 use IndependentMall\Http\Request;
 use IndependentMall\Http\Router;
 use IndependentMall\Kernel;
+use IndependentMall\License\AdminRefresh;
 use IndependentMall\License\FileLicenseGate;
 use IndependentMall\LicenseServer\Signer;
 use IndependentMall\LicenseServer\Store;
 use IndependentMall\Security\AuditLogger;
 use IndependentMall\Tests\Support\FrozenClock;
+use IndependentMall\Tests\Support\RecordingTransport;
 use IndependentMall\View\Renderer;
 use PHPUnit\Framework\TestCase;
 
@@ -132,6 +134,75 @@ final class LicenseTest extends TestCase
         $this->assertStringContainsString('lawful trade', $home->body());
         $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
         $this->assertFalse($health['license_required']);
+        $shopFront = (string) file_get_contents($this->root() . '/src/Http/ShopFront.php');
+        $this->assertStringNotContainsString('AdminRefresh', $shopFront);
+        $this->assertStringNotContainsString('LICENSE_SERVER_URL', $shopFront);
+    }
+
+    public function testAdminRefreshUpdatesDocumentAndFailureKeepsGrace(): void
+    {
+        $pair = Signer::generateKeypair();
+        $dir = sys_get_temp_dir() . '/im-ref-' . bin2hex(random_bytes(3));
+        mkdir($dir . '/var', 0775, true);
+        $issued = time();
+        $oldPayload = [
+            'license_id' => 'lic_r',
+            'instance_id' => 'shop-1',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $issued),
+            'last_refresh_at' => gmdate('c', $issued),
+            'expires_at' => gmdate('c', $issued + 3600),
+            'grace_days' => 14,
+            'revoked' => false,
+        ];
+        $old = Signer::sign($oldPayload, $pair['private']);
+        file_put_contents($dir . '/var/license.json', json_encode($old));
+        file_put_contents($dir . '/var/license-public.pem', $pair['public']);
+        $freshPayload = $oldPayload;
+        $freshPayload['last_refresh_at'] = gmdate('c', $issued + 100);
+        $ok = new RecordingTransport(Signer::sign($freshPayload, $pair['private']));
+        (new AdminRefresh($dir, $ok))->refresh('http://127.0.0.1:8091', 'lic_r', 'tok', 'shop-1');
+        $this->assertCount(1, $ok->calls);
+        $this->assertStringEndsWith('/refresh', $ok->calls[0]['url']);
+        $stored = json_decode((string) file_get_contents($dir . '/var/license.json'), true);
+        $this->assertSame($freshPayload['last_refresh_at'], $stored['payload']['last_refresh_at']);
+
+        $fail = new RecordingTransport(null, new \RuntimeException('down'));
+        try {
+            (new AdminRefresh($dir, $fail))->refresh('http://127.0.0.1:8091', 'lic_r', 'tok', 'shop-1');
+            $this->fail('expected failure');
+        } catch (\RuntimeException) {
+        }
+        $afterFail = json_decode((string) file_get_contents($dir . '/var/license.json'), true);
+        $this->assertSame($freshPayload['last_refresh_at'], $afterFail['payload']['last_refresh_at']);
+        $gate = new FileLicenseGate($dir . '/var/license.json', $dir . '/var/license-public.pem', new FrozenClock($issued + 3600 + 86400));
+        $this->assertTrue($gate->allows(['storefront_notice']));
+
+        $empty = new RecordingTransport(['ignored' => true]);
+        try {
+            (new AdminRefresh($dir, $empty))->refresh('', 'lic_r', 'tok', 'shop-1');
+            $this->fail('empty url');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('empty', $e->getMessage());
+        }
+        $this->assertSame([], $empty->calls);
+    }
+
+    public function testServerRefreshRequiresBoundInstance(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $store->issue('lic_r2', 'token-refresh', ['storefront_notice'], gmdate('c', time() + 86400));
+        try {
+            $store->refresh('lic_r2', 'token-refresh', 'host-a');
+            $this->fail('unbound');
+        } catch (\DomainException) {
+        }
+        $store->activate('lic_r2', 'token-refresh', 'host-a');
+        $again = $store->refresh('lic_r2', 'token-refresh', 'host-a');
+        $this->assertSame('host-a', $again['instance_id']);
+        $this->assertNotSame('', $again['last_refresh_at']);
     }
 
     public function testNoPrivateKeysInCommunityOrSamplePlugin(): void

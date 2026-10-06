@@ -21,6 +21,15 @@ ob_start();
         <label>Signed license JSON <textarea name="license_json" rows="8" required></textarea></label>
         <button type="submit">Verify and store locally</button>
     </form>
+    <form method="post" action="/admin/license/refresh" class="card">
+        <?= $csrf ?>
+        <h2>Scheduled refresh</h2>
+        <p class="muted">Calls LICENSE_SERVER_URL only from this admin action or <code>php bin/console license:refresh</code>. Storefront requests never do. If the server is down, the local document stays in place for the grace window.</p>
+        <label>License id <input name="license_id" required></label>
+        <label>Token <input name="token" required autocomplete="off"></label>
+        <label>Instance id <input name="instance_id" required></label>
+        <button type="submit">Refresh from server</button>
+    </form>
     <?php if (!empty($license_server)): ?>
         <p class="muted">Configured LICENSE_SERVER_URL is not contacted from the storefront. Refresh belongs on an operator schedule.</p>
     <?php endif; ?>

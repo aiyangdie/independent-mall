@@ -119,6 +119,31 @@ if ($command === 'release:scan') {
     exit(1);
 }
 
+if ($command === 'license:refresh') {
+    $flag = static function (string $name, string $default = '') use ($argv): string {
+        foreach ($argv as $arg) {
+            if (str_starts_with($arg, $name . '=')) {
+                return substr($arg, strlen($name) + 1);
+            }
+        }
+        return $default;
+    };
+    $url = $flag('--url', IndependentMall\Config\Config::load($root)->get('LICENSE_SERVER_URL'));
+    try {
+        (new IndependentMall\License\AdminRefresh($root, new IndependentMall\License\CurlTransport()))->refresh(
+            $url,
+            $flag('--id'),
+            $flag('--token'),
+            $flag('--instance'),
+        );
+        echo "License document refreshed locally.\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
 $kernel = Kernel::boot($root, false);
 
 if ($command === 'migrate') {
@@ -146,5 +171,5 @@ if ($command === 'demo:seed') {
     exit(0);
 }
 
-echo "Usage: php bin/console [doctor|install|migrate|admin:create|demo:seed|health|update:apply|backup|restore|release:scan]\n";
+echo "Usage: php bin/console [doctor|install|migrate|admin:create|demo:seed|health|update:apply|backup|restore|release:scan|license:refresh]\n";
 exit(1);

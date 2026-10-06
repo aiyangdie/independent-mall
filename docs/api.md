@@ -19,6 +19,7 @@ All state-changing POST bodies require `_csrf`. JSON health check is unauthentic
 | GET | `/deliveries/{token}` | bearer of hashed token |
 | GET/POST | `/admin/login` `/admin/products` `/admin/skus` `/admin/categories` `/admin/orders` `/admin/payments` `/admin/refunds` `/admin/customers` `/admin/modules` `/admin/rules` `/admin/settings` `/admin/audit` | administrator |
 | POST | `/admin/license` | administrator; stores a locally verified signed document |
+| POST | `/admin/license/refresh` | administrator; optional HTTP refresh; storefront never calls this |
 
 Fake payment notify is invoked from `/orders/{id}/pay-fake` using server-side amount and HMAC. Shoppers cannot supply a new total.
 

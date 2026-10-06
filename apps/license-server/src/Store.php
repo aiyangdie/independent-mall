@@ -100,6 +100,38 @@ final class Store
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function refresh(string $id, string $token, string $instanceId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM licenses WHERE id = :i');
+        $stmt->execute(['i' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row) || !hash_equals((string) $row['token_hash'], hash('sha256', $token))) {
+            throw new \DomainException('Unknown license.');
+        }
+        if ((int) $row['revoked'] === 1) {
+            throw new \DomainException('License revoked.');
+        }
+        $bound = (string) ($row['instance_id'] ?? '');
+        if ($bound === '' || $bound !== $instanceId) {
+            throw new \DomainException('License is not bound to this instance.');
+        }
+        $this->audit($id, 'refresh', ['instance_id' => $instanceId]);
+        $ents = json_decode((string) $row['entitlements'], true);
+        return [
+            'license_id' => $id,
+            'instance_id' => $instanceId,
+            'entitlements' => is_array($ents) ? $ents : [],
+            'issued_at' => (string) $row['created_at'],
+            'last_refresh_at' => gmdate('c'),
+            'expires_at' => $row['expires_at'],
+            'grace_days' => (int) $row['grace_days'],
+            'revoked' => false,
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $meta
      */
     private function audit(string $id, string $action, array $meta): void

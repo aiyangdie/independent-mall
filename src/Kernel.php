@@ -17,6 +17,8 @@ use IndependentMall\Catalog\ImageStore;
 use IndependentMall\Catalog\ProductCatalog;
 use IndependentMall\Catalog\ProhibitedGoodsPolicy;
 use IndependentMall\Install\Installer;
+use IndependentMall\License\AdminRefresh;
+use IndependentMall\License\CurlTransport;
 use IndependentMall\License\FileLicenseGate;
 use IndependentMall\Modules\ModuleHost;
 use IndependentMall\Http\Csrf;
@@ -275,6 +277,24 @@ final class Kernel
             return Response::redirect('/admin/login');
         }
         return null;
+    }
+
+    private function adminModulesPage(string $error = '', int $status = 200): Response
+    {
+        $host = $this->modules();
+        $rows = [];
+        foreach ($host->modules() as $module) {
+            $rows[] = $host->snapshot($module);
+        }
+        return $this->page('admin/modules', [
+            'title' => 'Modules',
+            'modules' => $rows,
+            'faults' => $host->faults(),
+            'csrf' => $this->csrf->field(),
+            'error' => $error,
+            'user' => $this->auth->user(),
+            'license_server' => $this->config->get('LICENSE_SERVER_URL'),
+        ], $status);
     }
 
     private function registerCatalogRoutes(): void
@@ -584,20 +604,7 @@ final class Kernel
             if ($deny = $this->requireAdmin()) {
                 return $deny;
             }
-            $host = $this->modules();
-            $rows = [];
-            foreach ($host->modules() as $module) {
-                $rows[] = $host->snapshot($module);
-            }
-            return $this->page('admin/modules', [
-                'title' => 'Modules',
-                'modules' => $rows,
-                'faults' => $host->faults(),
-                'csrf' => $this->csrf->field(),
-                'error' => '',
-                'user' => $this->auth->user(),
-                'license_server' => $this->config->get('LICENSE_SERVER_URL'),
-            ]);
+            return $this->adminModulesPage();
         });
         $this->router->add('POST', '/admin/license', function (Request $request) {
             if ($deny = $this->requireAdmin()) {
@@ -620,6 +627,25 @@ final class Kernel
             if (!$gate instanceof FileLicenseGate || $gate->payload() === null) {
                 @unlink($root . '/var/license.json');
                 return Response::html('License document failed verification. Community shop is unchanged.', 422);
+            }
+            return Response::redirect('/admin/modules');
+        });
+        $this->router->add('POST', '/admin/license/refresh', function (Request $request) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            try {
+                (new AdminRefresh($this->config->root(), new CurlTransport()))->refresh(
+                    $this->config->get('LICENSE_SERVER_URL'),
+                    $request->post('license_id'),
+                    $request->post('token'),
+                    $request->post('instance_id'),
+                );
+            } catch (\Throwable $e) {
+                return $this->adminModulesPage($e->getMessage(), 422);
             }
             return Response::redirect('/admin/modules');
         });
