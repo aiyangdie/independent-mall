@@ -32,30 +32,187 @@ final class Store
                 created_at TEXT NOT NULL
             )"
         );
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS products (
+                code TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                entitlements TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )'
+        );
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS product_versions (
+                product_code TEXT NOT NULL,
+                version TEXT NOT NULL,
+                notes TEXT NOT NULL DEFAULT \'\',
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (product_code, version)
+            )'
+        );
         $this->ensureNonceColumn();
+        $this->ensureLicenseProductColumns();
+    }
+
+    /**
+     * @param list<string> $entitlements
+     */
+    public function registerProduct(string $code, string $name, array $entitlements): void
+    {
+        $code = $this->requireProductCode($code);
+        $name = trim($name);
+        if ($name === '' || strlen($name) > 120) {
+            throw new \InvalidArgumentException('Product name is not acceptable.');
+        }
+        $ents = $this->normalizeEntitlements($entitlements);
+        if ($ents === []) {
+            throw new \InvalidArgumentException('Product needs at least one entitlement.');
+        }
+        $this->pdo->prepare(
+            'INSERT INTO products (code, name, entitlements, created_at) VALUES (:c, :n, :e, :t)'
+        )->execute([
+            'c' => $code,
+            'n' => $name,
+            'e' => json_encode($ents, JSON_THROW_ON_ERROR),
+            't' => gmdate('c'),
+        ]);
+    }
+
+    public function registerVersion(string $productCode, string $version, string $notes = ''): void
+    {
+        $productCode = $this->requireProductCode($productCode);
+        $version = $this->requireVersion($version);
+        $notes = trim($notes);
+        if (strlen($notes) > 500) {
+            throw new \InvalidArgumentException('Version notes are too long.');
+        }
+        $stmt = $this->pdo->prepare('SELECT 1 FROM products WHERE code = :c');
+        $stmt->execute(['c' => $productCode]);
+        if (!$stmt->fetchColumn()) {
+            throw new \DomainException('Unknown product.');
+        }
+        $this->pdo->prepare(
+            'INSERT INTO product_versions (product_code, version, notes, created_at) VALUES (:p, :v, :n, :t)'
+        )->execute([
+            'p' => $productCode,
+            'v' => $version,
+            'n' => $notes,
+            't' => gmdate('c'),
+        ]);
+    }
+
+    /**
+     * Read-only catalog for operators. No tokens or private keys.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function catalog(): array
+    {
+        $products = $this->pdo->query('SELECT code, name, entitlements, created_at FROM products ORDER BY code')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $out = [];
+        foreach ($products as $product) {
+            $ents = json_decode((string) $product['entitlements'], true);
+            $vstmt = $this->pdo->prepare(
+                'SELECT version, notes, created_at FROM product_versions WHERE product_code = :c ORDER BY version'
+            );
+            $vstmt->execute(['c' => $product['code']]);
+            $versions = [];
+            foreach ($vstmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $ver) {
+                $versions[] = [
+                    'version' => (string) $ver['version'],
+                    'notes' => (string) $ver['notes'],
+                    'created_at' => (string) $ver['created_at'],
+                ];
+            }
+            $out[] = [
+                'code' => (string) $product['code'],
+                'name' => (string) $product['name'],
+                'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
+                'versions' => $versions,
+                'created_at' => (string) $product['created_at'],
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Issue a license from a registered product + version. Entitlements come from the product row.
+     *
+     * @return string One-time activation nonce (not stored in plaintext)
+     */
+    public function issueForProduct(
+        string $id,
+        string $token,
+        string $productCode,
+        string $productVersion,
+        string $expiresAt,
+        int $graceDays = 14,
+    ): string {
+        $productCode = $this->requireProductCode($productCode);
+        $productVersion = $this->requireVersion($productVersion);
+        $stmt = $this->pdo->prepare('SELECT entitlements FROM products WHERE code = :c');
+        $stmt->execute(['c' => $productCode]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            throw new \DomainException('Unknown product.');
+        }
+        $vstmt = $this->pdo->prepare(
+            'SELECT 1 FROM product_versions WHERE product_code = :p AND version = :v'
+        );
+        $vstmt->execute(['p' => $productCode, 'v' => $productVersion]);
+        if (!$vstmt->fetchColumn()) {
+            throw new \DomainException('Unknown product version.');
+        }
+        $ents = json_decode((string) $row['entitlements'], true);
+        if (!is_array($ents)) {
+            throw new \DomainException('Product entitlements are corrupt.');
+        }
+        return $this->issue($id, $token, array_values(array_map('strval', $ents)), $expiresAt, $graceDays, $productCode, $productVersion);
     }
 
     /**
      * @param list<string> $entitlements
      * @return string One-time activation nonce (not stored in plaintext)
      */
-    public function issue(string $id, string $token, array $entitlements, string $expiresAt, int $graceDays = 14): string
-    {
+    public function issue(
+        string $id,
+        string $token,
+        array $entitlements,
+        string $expiresAt,
+        int $graceDays = 14,
+        string $productCode = '',
+        string $productVersion = '',
+    ): string {
+        $ents = $this->normalizeEntitlements($entitlements);
+        if ($ents === []) {
+            throw new \InvalidArgumentException('License needs at least one entitlement.');
+        }
+        if ($productCode !== '') {
+            $productCode = $this->requireProductCode($productCode);
+            $productVersion = $this->requireVersion($productVersion);
+        } else {
+            $productVersion = '';
+        }
         $now = gmdate('c');
         $nonce = bin2hex(random_bytes(16));
         $this->pdo->prepare(
-            'INSERT INTO licenses (id, token_hash, entitlements, expires_at, grace_days, activation_nonce_hash, created_at)
-             VALUES (:i, :h, :e, :x, :g, :n, :c)'
+            'INSERT INTO licenses (id, token_hash, entitlements, expires_at, grace_days, activation_nonce_hash, product_code, product_version, created_at)
+             VALUES (:i, :h, :e, :x, :g, :n, :pc, :pv, :c)'
         )->execute([
             'i' => $id,
             'h' => hash('sha256', $token),
-            'e' => json_encode($entitlements, JSON_THROW_ON_ERROR),
+            'e' => json_encode($ents, JSON_THROW_ON_ERROR),
             'x' => $expiresAt,
             'g' => $graceDays,
             'n' => hash('sha256', $nonce),
+            'pc' => $productCode,
+            'pv' => $productVersion,
             'c' => $now,
         ]);
-        $this->audit($id, 'issue', ['entitlements' => $entitlements]);
+        $this->audit($id, 'issue', [
+            'entitlements' => $ents,
+            'product_code' => $productCode,
+            'product_version' => $productVersion,
+        ]);
         return $nonce;
     }
 
@@ -88,17 +245,8 @@ final class Store
         $this->pdo->prepare('UPDATE licenses SET instance_id = :n, activation_nonce_hash = :z WHERE id = :i')
             ->execute(['n' => $instanceId, 'z' => '', 'i' => $id]);
         $this->audit($id, 'activate', ['instance_id' => $instanceId]);
-        $ents = json_decode((string) $row['entitlements'], true);
-        return [
-            'license_id' => $id,
-            'instance_id' => $instanceId,
-            'entitlements' => is_array($ents) ? $ents : [],
-            'issued_at' => gmdate('c'),
-            'last_refresh_at' => gmdate('c'),
-            'expires_at' => $row['expires_at'],
-            'grace_days' => (int) $row['grace_days'],
-            'revoked' => false,
-        ];
+        $row['instance_id'] = $instanceId;
+        return $this->payloadFromRow($row, false);
     }
 
     public function revoke(string $id): void
@@ -221,6 +369,8 @@ final class Store
             'expires_at' => (string) $row['expires_at'],
             'grace_days' => (int) $row['grace_days'],
             'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
+            'product_code' => (string) ($row['product_code'] ?? ''),
+            'product_version' => (string) ($row['product_version'] ?? ''),
             'created_at' => (string) $row['created_at'],
             'has_activation_nonce' => (string) ($row['activation_nonce_hash'] ?? '') !== '',
             'recent_audit' => $recent,
@@ -271,6 +421,8 @@ final class Store
             'license_id' => (string) $row['id'],
             'instance_id' => (string) ($row['instance_id'] ?? ''),
             'entitlements' => is_array($ents) ? $ents : [],
+            'product_code' => (string) ($row['product_code'] ?? ''),
+            'product_version' => (string) ($row['product_version'] ?? ''),
             'issued_at' => (string) $row['created_at'],
             'last_refresh_at' => gmdate('c'),
             'expires_at' => $row['expires_at'],
@@ -288,6 +440,41 @@ final class Store
         return $instanceId;
     }
 
+    private function requireProductCode(string $code): string
+    {
+        $code = strtolower(trim($code));
+        if (preg_match('/^[a-z][a-z0-9_-]{1,63}$/', $code) !== 1) {
+            throw new \InvalidArgumentException('Product code is not acceptable.');
+        }
+        return $code;
+    }
+
+    private function requireVersion(string $version): string
+    {
+        $version = trim($version);
+        if (preg_match('/^[0-9]+\.[0-9]+\.[0-9]+([.+-][a-zA-Z0-9._-]+)?$/', $version) !== 1) {
+            throw new \InvalidArgumentException('Product version is not acceptable.');
+        }
+        return $version;
+    }
+
+    /**
+     * @param list<string>|array<int, mixed> $entitlements
+     * @return list<string>
+     */
+    private function normalizeEntitlements(array $entitlements): array
+    {
+        $out = [];
+        foreach ($entitlements as $ent) {
+            $ent = trim((string) $ent);
+            if ($ent === '' || preg_match('/^[a-z][a-z0-9_]{1,63}$/', $ent) !== 1) {
+                throw new \InvalidArgumentException('Entitlement is not acceptable.');
+            }
+            $out[] = $ent;
+        }
+        return array_values(array_unique($out));
+    }
+
     private function ensureNonceColumn(): void
     {
         $names = [];
@@ -296,6 +483,20 @@ final class Store
         }
         if (!in_array('activation_nonce_hash', $names, true)) {
             $this->pdo->exec("ALTER TABLE licenses ADD COLUMN activation_nonce_hash TEXT NOT NULL DEFAULT ''");
+        }
+    }
+
+    private function ensureLicenseProductColumns(): void
+    {
+        $names = [];
+        foreach ($this->pdo->query('PRAGMA table_info(licenses)') as $col) {
+            $names[] = (string) $col['name'];
+        }
+        if (!in_array('product_code', $names, true)) {
+            $this->pdo->exec("ALTER TABLE licenses ADD COLUMN product_code TEXT NOT NULL DEFAULT ''");
+        }
+        if (!in_array('product_version', $names, true)) {
+            $this->pdo->exec("ALTER TABLE licenses ADD COLUMN product_version TEXT NOT NULL DEFAULT ''");
         }
     }
 

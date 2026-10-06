@@ -364,6 +364,57 @@ final class LicenseTest extends TestCase
         }
     }
 
+    public function testProductCatalogIssueAndRejectsUnknownVersion(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $this->assertSame([], $store->catalog());
+        $store->registerProduct('sample-notice', 'Sample notice module', ['storefront_notice']);
+        $store->registerVersion('sample-notice', '1.0.0', 'Initial demo SKU');
+        $catalog = $store->catalog();
+        $this->assertCount(1, $catalog);
+        $this->assertSame('sample-notice', $catalog[0]['code']);
+        $this->assertSame(['storefront_notice'], $catalog[0]['entitlements']);
+        $this->assertSame('1.0.0', $catalog[0]['versions'][0]['version']);
+        try {
+            $store->issueForProduct('lic_cat', 'token-catalog-x', 'sample-notice', '9.9.9', gmdate('c', time() + 86400));
+            $this->fail('unknown version must fail');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('Unknown product version', $e->getMessage());
+        }
+        $nonce = $store->issueForProduct(
+            'lic_cat',
+            'token-catalog-x',
+            'sample-notice',
+            '1.0.0',
+            gmdate('c', time() + 86400),
+        );
+        $payload = $store->activate('lic_cat', 'token-catalog-x', 'shop-cat-1', $nonce);
+        $this->assertSame('sample-notice', $payload['product_code']);
+        $this->assertSame('1.0.0', $payload['product_version']);
+        $this->assertSame(['storefront_notice'], $payload['entitlements']);
+        $status = $store->status('lic_cat');
+        $this->assertSame('sample-notice', $status['product_code']);
+        $this->assertSame('1.0.0', $status['product_version']);
+        $this->assertSame('issue', $status['recent_audit'][1]['action'] ?? $status['recent_audit'][0]['action']);
+        $issueMeta = null;
+        foreach ($status['recent_audit'] as $entry) {
+            if (($entry['action'] ?? '') === 'issue') {
+                $issueMeta = $entry['meta'];
+                break;
+            }
+        }
+        $this->assertIsArray($issueMeta);
+        $this->assertSame('sample-notice', $issueMeta['product_code'] ?? null);
+        $this->assertSame('1.0.0', $issueMeta['product_version'] ?? null);
+        try {
+            $store->registerProduct('Bad Code', 'x', ['storefront_notice']);
+            $this->fail('bad product code');
+        } catch (\InvalidArgumentException) {
+        }
+    }
+
     public function testRenewExtendsExpiryAndRejectsRevokedOrShorter(): void
     {
         $pdo = new \PDO('sqlite::memory:');
@@ -434,10 +485,12 @@ final class LicenseTest extends TestCase
         $this->assertStringContainsString('/revoke', $http);
         $this->assertStringContainsString('/renew', $http);
         $this->assertStringContainsString('/purge', $http);
+        $this->assertStringContainsString('/products', $http);
         $this->assertStringNotContainsString('IndependentMall\\Kernel', $http);
         $this->assertFileExists($this->root() . '/docs/license-server-data.md');
         $dataDoc = (string) file_get_contents($this->root() . '/docs/license-server-data.md');
         $this->assertStringContainsString('token_hash', $dataDoc);
+        $this->assertStringContainsString('product_code', $dataDoc);
         $this->assertStringContainsString('Not collected', $dataDoc);
         $this->assertStringContainsString('purge', $dataDoc);
         $this->assertStringNotContainsString('eval(', $http);

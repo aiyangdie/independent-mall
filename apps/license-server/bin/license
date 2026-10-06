@@ -31,11 +31,72 @@ if ($command === 'keys') {
     exit(0);
 }
 
+if ($command === 'product') {
+    $code = '';
+    $name = '';
+    $ents = [];
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--code=')) {
+            $code = substr($arg, 7);
+        } elseif (str_starts_with($arg, '--name=')) {
+            $name = substr($arg, 7);
+        } elseif (str_starts_with($arg, '--entitlements=')) {
+            $ents = array_values(array_filter(explode(',', substr($arg, 15))));
+        }
+    }
+    if ($code === '' || $name === '' || $ents === []) {
+        fwrite(STDERR, "Usage: php bin/license product --code=sample-notice --name=\"Sample notice\" --entitlements=storefront_notice\n");
+        exit(1);
+    }
+    try {
+        $store->registerProduct($code, $name, $ents);
+        echo "Registered product {$code}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
+if ($command === 'version') {
+    $product = '';
+    $version = '';
+    $notes = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--product=')) {
+            $product = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--version=')) {
+            $version = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--notes=')) {
+            $notes = substr($arg, 8);
+        }
+    }
+    if ($product === '' || $version === '') {
+        fwrite(STDERR, "Usage: php bin/license version --product=sample-notice --version=1.0.0 [--notes=text]\n");
+        exit(1);
+    }
+    try {
+        $store->registerVersion($product, $version, $notes);
+        echo "Registered {$product}@{$version}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
+if ($command === 'products') {
+    echo json_encode($store->catalog(), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), "\n";
+    exit(0);
+}
+
 if ($command === 'issue') {
     $id = '';
     $token = bin2hex(random_bytes(16));
     $ents = ['storefront_notice'];
     $days = 365;
+    $product = '';
+    $version = '';
     foreach (array_slice($argv, 2) as $arg) {
         if (str_starts_with($arg, '--id=')) {
             $id = substr($arg, 5);
@@ -43,14 +104,28 @@ if ($command === 'issue') {
             $days = (int) substr($arg, 7);
         } elseif (str_starts_with($arg, '--entitlements=')) {
             $ents = array_values(array_filter(explode(',', substr($arg, 15))));
+        } elseif (str_starts_with($arg, '--product=')) {
+            $product = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--version=')) {
+            $version = substr($arg, 10);
         }
     }
     if ($id === '') {
-        fwrite(STDERR, "Usage: php bin/license issue --id=lic_1 [--days=365]\n");
+        fwrite(STDERR, "Usage: php bin/license issue --id=lic_1 [--product=sample-notice --version=1.0.0] [--days=365]\n");
         exit(1);
     }
-    $nonce = $store->issue($id, $token, $ents, gmdate('c', time() + $days * 86400));
-    echo "Issued {$id}. Token (keep for refresh/unbind): {$token}\nActivation nonce (shown once): {$nonce}\n";
+    try {
+        $expires = gmdate('c', time() + $days * 86400);
+        if ($product !== '') {
+            $nonce = $store->issueForProduct($id, $token, $product, $version, $expires);
+        } else {
+            $nonce = $store->issue($id, $token, $ents, $expires);
+        }
+        echo "Issued {$id}. Token (keep for refresh/unbind): {$token}\nActivation nonce (shown once): {$nonce}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
     exit(0);
 }
 
@@ -207,5 +282,5 @@ if ($command === 'status') {
     exit(0);
 }
 
-echo "Usage: php bin/license [keys|issue|offline|revoke|renew|purge|status]\n";
+echo "Usage: php bin/license [keys|product|version|products|issue|offline|revoke|renew|purge|status]\n";
 exit(1);

@@ -10,11 +10,14 @@ This document lists what the Independent Mall license issuer stores. It is not a
 | `token_hash` | Authenticate refresh / unbind / revoke / renew / purge | SHA-256 of the one-time-shown token; plaintext never stored | Until purge |
 | `activation_nonce_hash` | One-time bind | SHA-256 of nonce; cleared after activate; rotated on unbind | Until purge |
 | `entitlements` | Which commercial features the license grants | JSON string list (e.g. `storefront_notice`) | Until purge |
+| `product_code` | Catalog product used at issue (optional) | Lowercase slug | Until purge |
+| `product_version` | Catalog version used at issue (optional) | Semver-like string | Until purge |
 | `expires_at` | End of paid window | UTC ISO-8601 | Until purge |
 | `grace_days` | Offline grace after expiry | Integer (default 14) | Until purge |
 | `instance_id` | Bound shop instance | Operator-chosen id (hostname hash + install UUID recommended); not a consumer fingerprint | Cleared on unbind; row kept until purge |
 | `revoked` | Operator kill-switch for commercial modules | Boolean | Until purge |
 | `created_at` | Issue time | UTC ISO-8601 | Until purge |
+| `products` / `product_versions` | Operator catalog of sellable commercial SKUs | Code, name, entitlements, version notes | Kept until operator deletes DB; not removed by license purge |
 | `license_audit` | Issue / activate / unbind / refresh / renew / revoke actions | `license_id`, action name, small JSON meta, timestamp | Deleted with purge |
 
 ## Not collected

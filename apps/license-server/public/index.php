@@ -23,6 +23,11 @@ $var = $root . '/var';
 $pdo = new PDO('sqlite:' . $var . '/licenses.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $store = new Store($pdo);
 
+if ($method === 'GET' && $path === '/products') {
+    echo json_encode(['products' => $store->catalog()], JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if ($method === 'POST' && $path === '/activate') {
     $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
     try {
