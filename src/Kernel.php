@@ -20,6 +20,7 @@ use IndependentMall\Install\Installer;
 use IndependentMall\License\AdminRefresh;
 use IndependentMall\License\CurlTransport;
 use IndependentMall\License\FileLicenseGate;
+use IndependentMall\License\LicenseDocuments;
 use IndependentMall\Modules\ModuleHost;
 use IndependentMall\Http\Csrf;
 use IndependentMall\Http\ShopFront;
@@ -252,16 +253,15 @@ final class Kernel
     private function healthLicense(): array
     {
         $root = $this->config->root();
-        $doc = $root . '/var/license.json';
-        $pub = is_file($root . '/var/license-public.pem')
-            ? $root . '/var/license-public.pem'
-            : $root . '/config/license-public.pem';
-        if (!is_file($doc) || !is_file($pub)) {
+        $pub = LicenseDocuments::publicKeyPath($root);
+        $doc = LicenseDocuments::documentPath($root);
+        if ($pub === null || !is_file($doc)) {
             return [
                 'mode' => 'absent',
                 'valid' => false,
                 'product_code' => null,
                 'entitlements' => [],
+                'trust_fingerprint' => $pub !== null ? LicenseDocuments::fingerprint((string) file_get_contents($pub)) : null,
             ];
         }
         $gate = FileLicenseGate::fromRoot($root);
@@ -271,30 +271,23 @@ final class Kernel
                 'valid' => false,
                 'product_code' => null,
                 'entitlements' => [],
+                'trust_fingerprint' => LicenseDocuments::fingerprint((string) file_get_contents($pub)),
             ];
         }
         $payload = $gate->payload();
-        if ($payload === null) {
-            return [
-                'mode' => 'offline_file',
-                'valid' => false,
-                'product_code' => null,
-                'entitlements' => [],
-            ];
-        }
-        $ents = $payload['entitlements'] ?? [];
-        $ents = is_array($ents) ? array_values(array_map('strval', $ents)) : [];
-        $valid = false;
-        if (empty($payload['revoked'])) {
-            $valid = $ents === [] ? true : $gate->allows($ents);
+        $ents = [];
+        if (is_array($payload)) {
+            $rawEnts = $payload['entitlements'] ?? [];
+            $ents = is_array($rawEnts) ? array_values(array_map('strval', $rawEnts)) : [];
         }
 
         return [
             'mode' => 'offline_file',
-            'valid' => $valid,
-            'product_code' => (string) ($payload['product_code'] ?? ''),
+            'valid' => $gate->isValid(),
+            'product_code' => is_array($payload) ? (string) ($payload['product_code'] ?? '') : null,
             'entitlements' => $ents,
-            'revoked' => !empty($payload['revoked']),
+            'revoked' => is_array($payload) && !empty($payload['revoked']),
+            'trust_fingerprint' => LicenseDocuments::fingerprint((string) file_get_contents($pub)),
         ];
     }
 
@@ -371,17 +364,31 @@ final class Kernel
      */
     private function localLicenseView(): array
     {
-        $gate = FileLicenseGate::fromRoot($this->config->root());
+        $root = $this->config->root();
+        $pubPath = LicenseDocuments::publicKeyPath($root);
+        $trust = [
+            'configured' => $pubPath !== null,
+            'source' => $pubPath === null
+                ? 'none'
+                : (str_contains(str_replace('\\', '/', $pubPath), '/config/license-public.pem') ? 'packaged' : 'local'),
+            'fingerprint' => $pubPath !== null
+                ? LicenseDocuments::fingerprint((string) file_get_contents($pubPath))
+                : '',
+            'packaged_locked' => is_file(LicenseDocuments::packagedPublicKeyPath($root))
+                && filesize(LicenseDocuments::packagedPublicKeyPath($root)) > 0,
+        ];
+        $gate = FileLicenseGate::fromRoot($root);
         if (!$gate instanceof FileLicenseGate) {
-            return ['present' => false];
+            return ['present' => false, 'valid' => false, 'trust' => $trust];
         }
         $payload = $gate->payload();
         if ($payload === null) {
-            return ['present' => false];
+            return ['present' => false, 'valid' => false, 'trust' => $trust];
         }
         $ents = $payload['entitlements'] ?? [];
         return [
             'present' => true,
+            'valid' => $gate->isValid(),
             'license_id' => (string) ($payload['license_id'] ?? ''),
             'instance_id' => (string) ($payload['instance_id'] ?? ''),
             'expires_at' => (string) ($payload['expires_at'] ?? ''),
@@ -390,6 +397,7 @@ final class Kernel
             'customer_id' => (string) ($payload['customer_id'] ?? ''),
             'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
             'revoked' => !empty($payload['revoked']),
+            'trust' => $trust,
         ];
     }
 
@@ -722,27 +730,48 @@ final class Kernel
             if (!$this->csrf->assert($request)) {
                 return Response::html('Invalid form', 400);
             }
-            $root = $this->config->root();
-            $json = trim($request->post('license_json'));
-            $pem = trim($request->post('public_pem'));
-            if ($pem !== '') {
-                if (!str_contains($pem, 'BEGIN PUBLIC KEY') && !str_contains($pem, 'BEGIN OPENSSH')) {
-                    return Response::html('Public key PEM is invalid.', 422);
-                }
-                file_put_contents($root . '/var/license-public.pem', $pem);
+            if (trim($request->post('public_pem')) !== '') {
+                return $this->adminModulesPage(
+                    'License import no longer accepts a public key. Configure the vendor trust key separately, then paste only the signed license JSON.',
+                    422,
+                );
             }
-            file_put_contents($root . '/var/license.json', $json);
-            $gate = FileLicenseGate::fromRoot($root);
-            if (!$gate instanceof FileLicenseGate || $gate->payload() === null) {
-                @unlink($root . '/var/license.json');
-                return Response::html('License document failed verification. Community shop is unchanged.', 422);
+            try {
+                $payload = LicenseDocuments::importDocument($this->config->root(), $request->post('license_json'));
+            } catch (\Throwable $e) {
+                return $this->adminModulesPage($e->getMessage(), 422);
             }
             (new AuditLogger($this->pdo))->record(
                 $this->auth->user()['id'] ?? null,
                 'license.store',
                 'license',
-                (string) ($gate->payload()['license_id'] ?? ''),
-                ['instance_id' => (string) ($gate->payload()['instance_id'] ?? '')],
+                (string) ($payload['license_id'] ?? ''),
+                ['instance_id' => (string) ($payload['instance_id'] ?? '')],
+            );
+            return Response::redirect('/admin/modules');
+        });
+        $this->router->add('POST', '/admin/license/trust-key', function (Request $request) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            try {
+                $fp = LicenseDocuments::installTrustKey(
+                    $this->config->root(),
+                    $request->post('public_pem'),
+                    $request->post('confirm_fingerprint'),
+                );
+            } catch (\Throwable $e) {
+                return $this->adminModulesPage($e->getMessage(), 422);
+            }
+            (new AuditLogger($this->pdo))->record(
+                $this->auth->user()['id'] ?? null,
+                'license.trust_key',
+                'license',
+                $fp,
+                [],
             );
             return Response::redirect('/admin/modules');
         });

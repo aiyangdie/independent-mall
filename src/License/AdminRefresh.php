@@ -40,7 +40,6 @@ final class AdminRefresh
             }
         }
         $url = rtrim($serverUrl, '/') . '/refresh';
-        $docPath = $this->root . '/var/license.json';
         try {
             $doc = $this->transport->postJson($url, [
                 'license_id' => $licenseId,
@@ -50,28 +49,18 @@ final class AdminRefresh
         } catch (\Throwable $e) {
             throw new \RuntimeException($e->getMessage(), 0, $e);
         }
-        if (!is_dir($this->root . '/var')) {
-            mkdir($this->root . '/var', 0775, true);
-        }
-        $tmp = $docPath . '.tmp';
-        file_put_contents($tmp, json_encode($doc, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
-        $pub = $this->root . '/var/license-public.pem';
-        if (!is_file($pub)) {
-            $pub = $this->root . '/config/license-public.pem';
-        }
-        $gate = new FileLicenseGate($tmp, $pub);
-        $payload = $gate->payload();
-        if ($payload === null) {
-            @unlink($tmp);
-            throw new \RuntimeException('Refreshed document failed local verification. Existing local document kept for grace.');
-        }
-        if ((string) ($payload['license_id'] ?? '') !== $licenseId || (string) ($payload['instance_id'] ?? '') !== $instanceId) {
-            @unlink($tmp);
-            throw new \RuntimeException('Refreshed document does not match this shop instance. Existing local document kept for grace.');
-        }
-        if (!rename($tmp, $docPath)) {
-            copy($tmp, $docPath);
-            @unlink($tmp);
+        $json = json_encode($doc, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        try {
+            LicenseDocuments::importDocument($this->root, $json, null, static function (array $payload) use ($licenseId, $instanceId): void {
+                if ((string) ($payload['license_id'] ?? '') !== $licenseId
+                    || (string) ($payload['instance_id'] ?? '') !== $instanceId) {
+                    throw new \RuntimeException(
+                        'Refreshed document does not match this shop instance. Existing local document kept for grace.'
+                    );
+                }
+            });
+        } catch (\DomainException $e) {
+            throw new \RuntimeException($e->getMessage() . ' Existing local document kept for grace.', 0, $e);
         }
     }
 }

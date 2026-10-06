@@ -17,10 +17,12 @@ A physical cable pull was not performed. Equivalence: those paths never open an 
 
 ## Offline license paste (commercial modules)
 
-1. On OfficialSite (`apps/www`), Fake-buy `sample-notice`, download `license.json` and `license-public.pem` from the account center.
-2. On Community `/admin/modules`, paste both into the offline license form (POST `/admin/license`).
-3. Migrate then enable `sample-notice`. Failure (bad signature, expired, revoked, missing entitlement) leaves core shop unchanged.
-4. Automated: `tests/CrossAppLicenseE2ETest.php`.
+1. Install the **vendor trust public key** once: Community `/admin/modules` → “Install or rotate trust public key”, or ship `config/license-public.pem` with a commercial release. Compare the displayed SHA-256 fingerprint with the official site value.
+2. On OfficialSite (`apps/www`), Fake-buy `sample-notice`, download `license.json` (and keep `license-public.pem` only for step 1 / fingerprint check).
+3. Paste **only** the signed JSON into Community `/admin/license`. Import verifies against the pinned trust key using a temp file, then atomically replaces `var/license.json`. A failed import leaves any existing license and trust key unchanged.
+4. License import **rejects** a bundled `public_pem` field — the trust anchor is not replaced by ordinary imports.
+5. Migrate then enable `sample-notice`. Failure (bad signature, expired, revoked, missing entitlement) leaves core shop unchanged.
+6. Automated: `tests/CrossAppLicenseE2ETest.php`, `LicenseTest::testBadImportLeavesExistingLicenseAndTrustKey`.
 
 ## Install
 

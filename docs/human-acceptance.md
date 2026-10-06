@@ -31,6 +31,7 @@ Record date, browser/OS, and who checked. Leave unchecked until done.
 Automated coverage lives in `tests/CrossAppLicenseE2ETest.php` (OfficialSite Fake buy → license JSON/PEM download → Community `/admin/license` import → migrate/enable `sample-notice`, plus tamper/wrong-key/expired/revoked/no-entitlement and commerce-still-works). Optional human walkthrough:
 
 1. Buy Fake SKU on `apps/www` account center.
-2. Download `license.json` + `license-public.pem`.
-3. Paste into Community `/admin/modules` offline form.
+2. Download `license.json` + note the public-key fingerprint from `license-public.pem`.
+3. On Community `/admin/modules`, install the trust public key once (or confirm packaged `config/license-public.pem`), then paste only the signed JSON.
 4. Migrate and enable `sample-notice`; confirm storefront notice; disable or remove `modules/commercial` and confirm checkout still works.
+5. Paste a deliberately bad JSON and confirm the previous license still enables commercial modules.

@@ -188,10 +188,14 @@ final class ModuleHostTest extends TestCase
             'grace_days' => 14,
             'revoked' => false,
         ], $pair['private']);
+        $trust = $kernel->handle(new Request('POST', '/admin/license/trust-key', [], [
+            '_csrf' => $token,
+            'public_pem' => $pair['public'],
+        ], [], []));
+        $this->assertSame(302, $trust->status());
         $stored = $kernel->handle(new Request('POST', '/admin/license', [], [
             '_csrf' => $token,
             'license_json' => (string) json_encode($envelope),
-            'public_pem' => $pair['public'],
         ], [], []));
         $this->assertSame(302, $stored->status());
         $this->assertSame('/admin/modules', $stored->header('Location'));
@@ -243,7 +247,6 @@ final class ModuleHostTest extends TestCase
         $kernel->handle(new Request('POST', '/admin/license', [], [
             '_csrf' => $token,
             'license_json' => (string) json_encode($revoked),
-            'public_pem' => $pair['public'],
         ], [], []));
         $stopped = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertStringContainsString('lawful trade', $stopped->body());

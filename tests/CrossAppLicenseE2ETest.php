@@ -190,7 +190,6 @@ final class CrossAppLicenseE2ETest extends TestCase
         $anonPost = $kernel->handle(new Request('POST', '/admin/license', [], [
             '_csrf' => $csrfC->token(),
             'license_json' => $licenseJson,
-            'public_pem' => $pubPem,
         ], [], []));
         $this->assertSame(302, $anonPost->status());
         $this->assertSame('/admin/login', $anonPost->header('Location'));
@@ -201,24 +200,51 @@ final class CrossAppLicenseE2ETest extends TestCase
 
         $modules = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
         $this->assertSame(200, $modules->status());
-        $this->assertStringContainsString('license', strtolower($modules->body()));
+        $this->assertStringContainsString('trust', strtolower($modules->body()));
+
+        // Import without trust key must fail and leave no license.json
+        $noTrust = $kernel->handle(new Request('POST', '/admin/license', [], [
+            '_csrf' => $ctoken,
+            'license_json' => $licenseJson,
+        ], [], []));
+        $this->assertSame(422, $noTrust->status());
+        $this->assertFileDoesNotExist($communityRoot . '/var/license.json');
+
+        $trust = $kernel->handle(new Request('POST', '/admin/license/trust-key', [], [
+            '_csrf' => $ctoken,
+            'public_pem' => $pubPem,
+        ], [], []));
+        $this->assertSame(302, $trust->status());
+        $this->assertFileExists($communityRoot . '/var/license-public.pem');
+        $modules = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
+        $this->assertStringContainsString(\IndependentMall\License\LicenseDocuments::fingerprint($pubPem), $modules->body());
+
+        // Reject bundling an arbitrary PEM with license import
+        $withPem = $kernel->handle(new Request('POST', '/admin/license', [], [
+            '_csrf' => $ctoken,
+            'license_json' => $licenseJson,
+            'public_pem' => $pubPem,
+        ], [], []));
+        $this->assertSame(422, $withPem->status());
+        $this->assertStringContainsString('no longer accepts a public key', $withPem->body());
+        $this->assertFileDoesNotExist($communityRoot . '/var/license.json');
 
         $import = $kernel->handle(new Request('POST', '/admin/license', [], [
             '_csrf' => $ctoken,
             'license_json' => $licenseJson,
-            'public_pem' => $pubPem,
         ], [], []));
         $this->assertSame(302, $import->status());
         $this->assertSame('/admin/modules', $import->header('Location'));
 
         $this->assertFileExists($communityRoot . '/var/license.json');
-        $this->assertFileExists($communityRoot . '/var/license-public.pem');
         $storedGate = FileLicenseGate::fromRoot($communityRoot);
         $this->assertInstanceOf(FileLicenseGate::class, $storedGate);
         $this->assertTrue($storedGate->allows(['storefront_notice']));
         $payload = $storedGate->payload();
         $this->assertSame('sample-notice', $payload['product_code'] ?? null);
         $this->assertDoesNotLeakSecrets((string) file_get_contents($communityRoot . '/var/license.json'), $privPem);
+        $goodLicenseOnDisk = (string) file_get_contents($communityRoot . '/var/license.json');
+        $goodPemOnDisk = (string) file_get_contents($communityRoot . '/var/license-public.pem');
 
         $audit = $pdoCommunity->query("SELECT action, entity_id, meta FROM audit_logs WHERE action = 'license.store' ORDER BY id DESC LIMIT 1")->fetch(\PDO::FETCH_ASSOC);
         $this->assertIsArray($audit);
@@ -259,31 +285,58 @@ final class CrossAppLicenseE2ETest extends TestCase
         $this->assertTrue($auth->login('ops@example.invalid', 'correct-horse-battery', '127.0.0.1'));
         $ctoken = $csrfC->token();
 
-        // --- Negatives ---
+        // --- Negatives: bad import must not destroy the good license or trust key ---
         $tampered = json_decode($licenseJson, true);
         $tampered['payload']['entitlements'][] = 'forged_entitlement';
         $bad = $kernel->handle(new Request('POST', '/admin/license', [], [
             '_csrf' => $ctoken,
             'license_json' => (string) json_encode($tampered),
-            'public_pem' => $pubPem,
         ], [], []));
         $this->assertSame(422, $bad->status());
+        $this->assertStringContainsString('left unchanged', $bad->body());
+        $this->assertSame($goodLicenseOnDisk, (string) file_get_contents($communityRoot . '/var/license.json'));
+        $this->assertSame($goodPemOnDisk, (string) file_get_contents($communityRoot . '/var/license-public.pem'));
+        $this->assertTrue(FileLicenseGate::fromRoot($communityRoot)->allows(['storefront_notice']));
 
         $other = Signer::generateKeypair();
-        $wrongKey = $kernel->handle(new Request('POST', '/admin/license', [], [
+        // Attempt to smuggle a different trust key via license import is rejected
+        $smuggle = $kernel->handle(new Request('POST', '/admin/license', [], [
             '_csrf' => $ctoken,
             'license_json' => $licenseJson,
             'public_pem' => $other['public'],
         ], [], []));
-        $this->assertSame(422, $wrongKey->status());
+        $this->assertSame(422, $smuggle->status());
+        $this->assertSame($goodPemOnDisk, (string) file_get_contents($communityRoot . '/var/license-public.pem'));
 
-        // Restore good license after 422 attempts
-        $restore = $kernel->handle(new Request('POST', '/admin/license', [], [
+        $foreignDoc = Signer::sign([
+            'license_id' => 'lic_foreign',
+            'instance_id' => 'shop-e2e',
+            'entitlements' => ['storefront_notice'],
+            'product_code' => 'sample-notice',
+            'product_version' => '1.0.0',
+            'customer_id' => 'cust_e2e',
+            'issued_at' => gmdate('c'),
+            'last_refresh_at' => gmdate('c'),
+            'expires_at' => gmdate('c', time() + 86400 * 30),
+            'grace_days' => 14,
+            'revoked' => false,
+        ], $other['private']);
+        $wrongKey = $kernel->handle(new Request('POST', '/admin/license', [], [
             '_csrf' => $ctoken,
-            'license_json' => $licenseJson,
-            'public_pem' => $pubPem,
+            'license_json' => (string) json_encode($foreignDoc),
         ], [], []));
-        $this->assertSame(302, $restore->status());
+        $this->assertSame(422, $wrongKey->status());
+        $this->assertSame($goodLicenseOnDisk, (string) file_get_contents($communityRoot . '/var/license.json'));
+        $this->assertSame($goodPemOnDisk, (string) file_get_contents($communityRoot . '/var/license-public.pem'));
+        $this->assertTrue(FileLicenseGate::fromRoot($communityRoot)->allows(['storefront_notice']));
+
+        // Rotating trust key without confirm fingerprint fails; good license + key remain
+        $rotateDenied = $kernel->handle(new Request('POST', '/admin/license/trust-key', [], [
+            '_csrf' => $ctoken,
+            'public_pem' => $other['public'],
+        ], [], []));
+        $this->assertSame(422, $rotateDenied->status());
+        $this->assertSame($goodPemOnDisk, (string) file_get_contents($communityRoot . '/var/license-public.pem'));
 
         $now = time();
         $expired = Signer::sign([
@@ -299,8 +352,8 @@ final class CrossAppLicenseE2ETest extends TestCase
             'grace_days' => 7,
             'revoked' => false,
         ], $privPem);
+        // Direct file write for expired/revoked/no-entitlement gate checks (import would succeed signature-wise for expired)
         file_put_contents($communityRoot . '/var/license.json', (string) json_encode($expired));
-        file_put_contents($communityRoot . '/var/license-public.pem', $pubPem);
         $expiredGate = new FileLicenseGate(
             $communityRoot . '/var/license.json',
             $communityRoot . '/var/license-public.pem',

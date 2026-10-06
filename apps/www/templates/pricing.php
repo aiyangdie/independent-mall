@@ -17,6 +17,6 @@
     <li>Register on this site and open the customer center.</li>
     <li>Buy sample notice (Fake) → issuer customer <code>www_u{id}</code>, commercial order <code>fake_completed</code>, signed license.</li>
     <li>Bind an instance, then Renew (Fake) → issuer order <code>fake_renewed</code> and a later <code>expires_at</code>.</li>
-    <li>Download signed JSON + <code>license-public.pem</code> from the customer center, then paste into Community <code>/admin/modules</code> (or use admin refresh).</li>
+    <li>Download signed JSON and the vendor <code>license-public.pem</code>. On Community, install the trust key once (<code>/admin/license/trust-key</code> or packaged <code>config/license-public.pem</code>), then paste only the signed JSON into <code>/admin/license</code> (or use admin refresh).</li>
 </ol>
 <p><a class="btn" href="/register">Open a demo account</a> <a class="btn ghost" href="/docs">Issuer docs index</a> <a class="btn ghost" href="/legal/disclaimer">Read the disclaimer draft</a></p>

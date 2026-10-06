@@ -65,7 +65,9 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('Demo path (Fake only)', $pricing->body());
         $this->assertStringContainsString('fake_completed', $pricing->body());
         $this->assertStringContainsString('fake_renewed', $pricing->body());
-        $this->assertStringContainsString('/admin/modules', $pricing->body());
+        $this->assertStringContainsString('/admin/license/trust-key', $pricing->body());
+        $this->assertStringContainsString('/admin/license', $pricing->body());
+        $this->assertStringContainsString('config/license-public.pem', $pricing->body());
         $this->assertStringContainsString('/docs', $pricing->body());
         $changelog = $this->site->handle(new Request('GET', '/changelog', [], [], [], []));
         $this->assertStringContainsString('0.1.1-dev', $changelog->body());

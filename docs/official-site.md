@@ -19,6 +19,12 @@ Legal drafts on `/legal/refunds`, `/legal/prohibited`, and `/legal/disclaimer` p
 After Fake buy, the account center links to:
 
 - `GET /account/license.json?id=lic_…` — signed Ed25519 envelope (no long-lived token)
-- `GET /account/license-public.pem` — public key for Community paste
+- `GET /account/license-public.pem` — vendor public key for **trust-key install / fingerprint check** (not pasted with every license import)
 
-Paste both into Community `/admin/modules` (POST `/admin/license`). Ownership is enforced; guests get 401; foreign ids get 400. End-to-end coverage: `tests/CrossAppLicenseE2ETest.php`. Manual ops notes: `docs/human-acceptance.md`.
+On Community:
+
+1. Install the trust public key once via `POST /admin/license/trust-key` (or ship `config/license-public.pem`).
+2. Paste only the signed JSON via `POST /admin/license` (rejects `public_pem` on this route).
+3. Failed imports leave the previous `var/license.json` and trust key untouched.
+
+Ownership is enforced on download; guests get 401; foreign ids get 400. End-to-end coverage: `tests/CrossAppLicenseE2ETest.php`. Manual ops notes: `docs/human-acceptance.md`.

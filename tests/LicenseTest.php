@@ -69,6 +69,113 @@ final class LicenseTest extends TestCase
         $this->assertTrue($afterExpiry->allows(['storefront_notice']));
         $afterGrace = new FileLicenseGate($dir . '/var-license.json', $dir . '/pub.pem', new FrozenClock($issued + 3600 + 15 * 86400));
         $this->assertFalse($afterGrace->allows(['storefront_notice']));
+        $this->assertFalse($afterGrace->isValid());
+    }
+
+    public function testIsValidRejectsExpiredEmptyEntitlements(): void
+    {
+        $pair = Signer::generateKeypair();
+        $dir = sys_get_temp_dir() . '/im-lic-empty-' . bin2hex(random_bytes(3));
+        mkdir($dir, 0775, true);
+        $issued = time() - 86400 * 60;
+        $payload = [
+            'license_id' => 'lic_empty',
+            'instance_id' => 'shop-1',
+            'entitlements' => [],
+            'issued_at' => gmdate('c', $issued),
+            'last_refresh_at' => gmdate('c', $issued),
+            'expires_at' => gmdate('c', $issued + 3600),
+            'grace_days' => 1,
+            'revoked' => false,
+        ];
+        file_put_contents($dir . '/doc.json', json_encode(Signer::sign($payload, $pair['private'])));
+        file_put_contents($dir . '/pub.pem', $pair['public']);
+        $now = $issued + 3600 + 3 * 86400;
+        $gate = new FileLicenseGate($dir . '/doc.json', $dir . '/pub.pem', new FrozenClock($now));
+        $this->assertFalse($gate->isValid());
+        $this->assertFalse($gate->allows([]));
+        $this->assertFalse($gate->allows(['storefront_notice']));
+
+        $fresh = $payload;
+        $fresh['issued_at'] = gmdate('c', $now - 10);
+        $fresh['last_refresh_at'] = gmdate('c', $now - 10);
+        $fresh['expires_at'] = gmdate('c', $now + 3600);
+        file_put_contents($dir . '/doc.json', json_encode(Signer::sign($fresh, $pair['private'])));
+        $ok = new FileLicenseGate($dir . '/doc.json', $dir . '/pub.pem', new FrozenClock($now));
+        $this->assertTrue($ok->isValid());
+        $this->assertTrue($ok->allows([]));
+        $this->assertFalse($ok->allows(['storefront_notice']));
+    }
+
+    public function testBadImportLeavesExistingLicenseAndTrustKey(): void
+    {
+        $pair = Signer::generateKeypair();
+        $other = Signer::generateKeypair();
+        $root = sys_get_temp_dir() . '/im-lic-atom-' . bin2hex(random_bytes(3));
+        mkdir($root . '/var', 0775, true);
+        $now = time();
+        $good = Signer::sign([
+            'license_id' => 'lic_good',
+            'instance_id' => 'shop-1',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $now),
+            'last_refresh_at' => gmdate('c', $now),
+            'expires_at' => gmdate('c', $now + 86400),
+            'grace_days' => 14,
+            'revoked' => false,
+        ], $pair['private']);
+        $fp = \IndependentMall\License\LicenseDocuments::installTrustKey($root, $pair['public']);
+        $this->assertSame(\IndependentMall\License\LicenseDocuments::fingerprint($pair['public']), $fp);
+        \IndependentMall\License\LicenseDocuments::importDocument($root, (string) json_encode($good));
+        $beforeDoc = (string) file_get_contents($root . '/var/license.json');
+        $beforePem = (string) file_get_contents($root . '/var/license-public.pem');
+
+        $tampered = $good;
+        $tampered['payload']['entitlements'][] = 'forged';
+        try {
+            \IndependentMall\License\LicenseDocuments::importDocument($root, (string) json_encode($tampered));
+            $this->fail('tampered import must fail');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('unchanged', $e->getMessage());
+        }
+        $this->assertSame($beforeDoc, (string) file_get_contents($root . '/var/license.json'));
+        $this->assertSame($beforePem, (string) file_get_contents($root . '/var/license-public.pem'));
+        $this->assertTrue(FileLicenseGate::fromRoot($root)->allows(['storefront_notice']));
+
+        $foreign = Signer::sign([
+            'license_id' => 'lic_bad',
+            'instance_id' => 'shop-1',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $now),
+            'last_refresh_at' => gmdate('c', $now),
+            'expires_at' => gmdate('c', $now + 86400),
+            'grace_days' => 14,
+            'revoked' => false,
+        ], $other['private']);
+        try {
+            \IndependentMall\License\LicenseDocuments::importDocument($root, (string) json_encode($foreign));
+            $this->fail('foreign-key document must fail');
+        } catch (\DomainException) {
+        }
+        $this->assertSame($beforeDoc, (string) file_get_contents($root . '/var/license.json'));
+        $this->assertSame($beforePem, (string) file_get_contents($root . '/var/license-public.pem'));
+
+        try {
+            \IndependentMall\License\LicenseDocuments::installTrustKey($root, $other['public']);
+            $this->fail('rotation without fingerprint must fail');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('confirm_fingerprint', $e->getMessage());
+        }
+        $this->assertSame($beforePem, (string) file_get_contents($root . '/var/license-public.pem'));
+
+        mkdir($root . '/config', 0775, true);
+        file_put_contents($root . '/config/license-public.pem', $pair['public']);
+        try {
+            \IndependentMall\License\LicenseDocuments::installTrustKey($root, $other['public'], $fp);
+            $this->fail('packaged key must block local trust-key install');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('packaged', $e->getMessage());
+        }
     }
 
     public function testServerActivateBindsInstanceAndOfflineDocument(): void

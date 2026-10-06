@@ -68,9 +68,9 @@ $flash = $e((string) ($data['flash'] ?? ''));
         </li>
 <?php endforeach; ?>
 </ul>
-<p>Demo public key for offline paste into Community <code>/admin/modules</code>:
+<p>Demo vendor public key for Community trust-key install / fingerprint check:
     <a href="/account/license-public.pem">license-public.pem</a>
-    (does not include the long-lived license token).</p>
+    (install once under <code>/admin/license/trust-key</code>; do not paste it with every license JSON. Does not include the long-lived license token).</p>
 <form method="post" action="/account/activate">
     <?= $csrf->field() ?>
     <label>License id <input name="license_id" required></label>
