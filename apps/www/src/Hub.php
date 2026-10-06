@@ -9,6 +9,7 @@ use IndependentMall\License\CanonicalJson;
 use IndependentMall\License\OpenSslEd25519;
 use IndependentMall\LicenseServer\Signer;
 use IndependentMall\LicenseServer\Store;
+use IndependentMall\Update\PackageVerifier;
 use PDO;
 
 final class Hub
@@ -317,6 +318,38 @@ final class Hub
                 'signed' => true,
             ],
             'update_public_key' => $this->publicPem,
+        ];
+    }
+
+    /**
+     * Verifies update metadata only. Never writes install files.
+     *
+     * @return array{unsigned:string,signed:string,applied:bool,version:string,sha256:string}
+     */
+    public function inspectUpdates(?int $userId = null): array
+    {
+        $doc = $this->updates();
+        $unsigned = 'refused_auto_install';
+        $signedPath = $this->filesDir . '/' . self::FILES['community-0.1.1'];
+        $signed = 'unverified';
+        try {
+            PackageVerifier::assertSafeToApply(
+                $doc['signed_release'],
+                $signedPath,
+                (string) $doc['update_public_key'],
+                '0.1.0',
+            );
+            $signed = 'verified_not_applied';
+        } catch (\Throwable $e) {
+            $signed = 'failed:' . $e->getMessage();
+        }
+        $this->log($userId, 'inspect_updates', ['signed' => $signed, 'applied' => false]);
+        return [
+            'unsigned' => $unsigned,
+            'signed' => $signed,
+            'applied' => false,
+            'version' => (string) $doc['signed_release']['version'],
+            'sha256' => (string) $doc['signed_release']['sha256'],
         ];
     }
 

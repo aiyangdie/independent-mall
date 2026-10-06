@@ -74,6 +74,9 @@ final class Site
                 $method === 'GET' && $path === '/legal/terms' => $this->page('legal', ['title' => 'Terms', 'kind' => 'terms']),
                 $method === 'GET' && $path === '/legal/privacy' => $this->page('legal', ['title' => 'Privacy', 'kind' => 'privacy']),
                 $method === 'GET' && $path === '/legal/aup' => $this->page('legal', ['title' => 'Acceptable use', 'kind' => 'aup']),
+                $method === 'GET' && $path === '/legal/refunds' => $this->page('legal', ['title' => 'Refunds', 'kind' => 'refunds']),
+                $method === 'GET' && $path === '/legal/prohibited' => $this->page('legal', ['title' => 'Prohibited goods', 'kind' => 'prohibited']),
+                $method === 'GET' && $path === '/legal/disclaimer' => $this->page('legal', ['title' => 'Disclaimer', 'kind' => 'disclaimer']),
                 $method === 'GET' && $path === '/updates.json' => Response::json($this->hub->updates()),
                 $method === 'GET' && $path === '/register' => $this->page('register', ['title' => 'Register', 'error' => '']),
                 $method === 'POST' && $path === '/register' => $this->postRegister($request),
@@ -81,6 +84,7 @@ final class Site
                 $method === 'POST' && $path === '/login' => $this->postLogin($request),
                 $method === 'POST' && $path === '/logout' => $this->logout($request),
                 $method === 'GET' && $path === '/account' => $this->account(),
+                $method === 'GET' && $path === '/account/updates' => $this->inspectUpdates(),
                 $method === 'POST' && $path === '/account/buy' => $this->buy($request),
                 $method === 'POST' && $path === '/account/activate' => $this->activate($request),
                 $method === 'POST' && $path === '/account/unbind' => $this->unbind($request),
@@ -155,6 +159,18 @@ final class Site
             'files' => $files,
             'downloads' => $this->hub->downloadAudits($uid),
             'flash' => (string) ($_SESSION['www_flash'] ?? ''),
+        ]);
+    }
+
+    private function inspectUpdates(): Response
+    {
+        $uid = $this->userId();
+        if ($uid < 1) {
+            return Response::redirect('/login');
+        }
+        return $this->page('updates', [
+            'title' => 'Check updates',
+            'report' => $this->hub->inspectUpdates($uid),
         ]);
     }
 

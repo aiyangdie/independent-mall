@@ -10,4 +10,6 @@ Download links are HMAC + expiry (10 minutes). File ids are a whitelist; `realpa
 
 `GET /updates.json` includes an unsigned `latest` channel (auto-install forbidden) and a `signed_release` channel. Clients must verify SHA-256 and Ed25519, copy the install tree first, and restore that copy if the write fails. `php bin/console update:apply` is the local demonstration; it does not fetch URLs.
 
-Customer center lists HMAC downloads and a download audit (allowed/denied).
+Customer center lists HMAC downloads, a download audit, and **Check updates** (`GET /account/updates`) which verifies signed metadata and refuses to apply files.
+
+Legal drafts on `/legal/refunds`, `/legal/prohibited`, and `/legal/disclaimer` point at `docs/legal/` and state they are not counsel-reviewed.

@@ -8,6 +8,7 @@ $flash = $e((string) ($data['flash'] ?? ''));
 <h1>Customer center</h1>
 <?php if ($flash !== ''): ?><p class="ok"><?= $flash ?></p><?php endif; ?>
 <form method="post" action="/logout"><?= $csrf->field() ?><button type="submit">Sign out</button></form>
+<p><a href="/account/updates">Check updates (verify only, do not apply)</a></p>
 
 <h2>Fake purchase</h2>
 <p>Records a completed Fake order and issues a signed license. This is not a real charge.</p>

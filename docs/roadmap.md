@@ -12,6 +12,6 @@ Status is only marked done after tests or HTTP checks in that environment.
 | 5 | Installer, deploy/upgrade docs, release checklist | In progress locally: CLI/web installer refuses overwrite; ops/release/troubleshooting docs. Full release checklist not signed off |
 | 6 | Commercial module seam + sample plugin | In progress locally: host + sample-notice; default deny without local entitlement; community tests must not import commercial classes |
 | 7 | License server | In progress locally: independent signer + Ed25519 local verify, 14-day grace, unbind, issued-at skew; no private key in Community Core |
-| 8 | Public marketing/account site | In progress locally: Fake buy → license → HMAC download audit; signed_release + SafeApplier backup/rollback. No production auto-updater |
+| 8 | Public marketing/account site | In progress locally: inspect-updates (verify only); refunds/prohibited/disclaimer drafts. No production auto-updater or counsel sign-off |
 
 Local URLs used in development: `http://127.0.0.1:8090/` (does not bind to the legacy shop on 8080).

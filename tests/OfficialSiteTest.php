@@ -48,12 +48,17 @@ final class OfficialSiteTest extends TestCase
 
     public function testMarketingPagesAndUnsignedUpdates(): void
     {
-        foreach (['/', '/editions', '/pricing', '/docs', '/changelog', '/contact', '/legal/terms'] as $path) {
+        foreach (['/', '/editions', '/pricing', '/docs', '/changelog', '/contact', '/legal/terms', '/legal/refunds', '/legal/prohibited', '/legal/disclaimer'] as $path) {
             $res = $this->site->handle(new Request('GET', $path, [], [], [], []));
             $this->assertSame(200, $res->status(), $path);
             $this->assertStringNotContainsString('彩虹', $res->body());
             $this->assertStringNotContainsString('代刷', $res->body());
+            $this->assertStringContainsString('Counsel has not reviewed', $res->body());
         }
+        $refunds = $this->site->handle(new Request('GET', '/legal/refunds', [], [], [], []));
+        $this->assertStringContainsString('mandatory consumer law', $refunds->body());
+        $ban = $this->site->handle(new Request('GET', '/legal/prohibited', [], [], [], []));
+        $this->assertStringContainsString('account trading', $ban->body());
         $updates = json_decode($this->site->handle(new Request('GET', '/updates.json', [], [], [], []))->body(), true);
         $this->assertFalse($updates['latest']['signed']);
         $this->assertTrue($updates['signed_release']['signed']);
@@ -75,6 +80,30 @@ final class OfficialSiteTest extends TestCase
         file_put_contents($install . '/VERSION', '0.1.0');
         (new SafeApplier())->apply($install, $artifact, $updates['signed_release'], $updates['update_public_key'], '0.1.0');
         $this->assertStringContainsString('0.1.1 signed notes', (string) file_get_contents($install . '/NOTES.txt'));
+    }
+
+    public function testInspectUpdatesDoesNotApply(): void
+    {
+        $guest = $this->site->handle(new Request('GET', '/account/updates', [], [], [], []));
+        $this->assertSame(302, $guest->status());
+        $token = (new Csrf())->token();
+        $this->site->handle(new Request('POST', '/register', [], [
+            '_csrf' => $token,
+            'email' => 'ops@example.invalid',
+            'password' => 'correct-horse-battery',
+        ], [], []));
+        $artifact = dirname(__DIR__) . '/apps/www/data/files/community-0.1.1.txt';
+        $before = (string) file_get_contents($artifact);
+        $mtime = filemtime($artifact);
+        $page = $this->site->handle(new Request('GET', '/account/updates', [], [], [], []));
+        $this->assertSame(200, $page->status());
+        $this->assertStringContainsString('verified_not_applied', $page->body());
+        $this->assertStringContainsString('refused_auto_install', $page->body());
+        $this->assertStringContainsString('Applied: no', $page->body());
+        $this->assertSame($before, (string) file_get_contents($artifact));
+        $this->assertSame($mtime, filemtime($artifact));
+        $account = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('inspect_updates', $account->body());
     }
 
     public function testFakeBuyIssueActivateDownloadAndTraversalDenied(): void

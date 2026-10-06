@@ -34,6 +34,9 @@ $title = htmlspecialchars((string) ($data['title'] ?? 'Independent Mall'), ENT_Q
     <a href="/legal/terms">Terms</a>
     <a href="/legal/privacy">Privacy</a>
     <a href="/legal/aup">Acceptable use</a>
+    <a href="/legal/refunds">Refunds</a>
+    <a href="/legal/prohibited">Prohibited goods</a>
+    <a href="/legal/disclaimer">Disclaimer</a>
     <p>Draft legal text. Counsel has not reviewed these pages.</p>
 </footer>
 </body>
