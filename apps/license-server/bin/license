@@ -86,10 +86,33 @@ if ($command === 'offline') {
 }
 
 if ($command === 'revoke') {
-    $id = substr($argv[2] ?? '', 5);
-    if (!str_starts_with($argv[2] ?? '', '--id=')) {
-        fwrite(STDERR, "Usage: php bin/license revoke --id=lic_1\n");
+    $id = '';
+    $token = '';
+    $out = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--id=')) {
+            $id = substr($arg, 5);
+        } elseif (str_starts_with($arg, '--token=')) {
+            $token = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--out=')) {
+            $out = substr($arg, 6);
+        }
+    }
+    if ($id === '') {
+        fwrite(STDERR, "Usage: php bin/license revoke --id=lic_1 [--token=TOKEN] [--out=revoked.json]\n");
         exit(1);
+    }
+    if ($token !== '') {
+        $payload = $store->revokeIfAuthorized($id, $token);
+        $private = (string) file_get_contents($var . '/private.pem');
+        $doc = json_encode(Signer::sign($payload, $private), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        if ($out !== '') {
+            file_put_contents($out, $doc);
+            echo "Revoked {$id} and wrote {$out}\n";
+        } else {
+            echo $doc, "\n";
+        }
+        exit(0);
     }
     $store->revoke($id);
     echo "Revoked {$id}\n";

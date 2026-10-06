@@ -20,7 +20,8 @@ ob_start();
             <p>Verified locally. License <code><?= $e((string) $local['license_id']) ?></code>
                 bound to <code><?= $e((string) $local['instance_id']) ?></code>.
                 Expires <?= $e((string) $local['expires_at']) ?>.
-                Entitlements: <?= $e(implode(', ', $local['entitlements'] ?? [])) ?></p>
+                Entitlements: <?= $e(implode(', ', $local['entitlements'] ?? [])) ?>.
+                Status: <?= !empty($local['revoked']) ? 'revoked (commercial modules stay off; checkout still works)' : 'active' ?></p>
         <?php else: ?>
             <p class="muted">No verified local license document. Community checkout still works.</p>
         <?php endif; ?>

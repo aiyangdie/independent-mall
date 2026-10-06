@@ -62,6 +62,23 @@ if ($method === 'POST' && $path === '/unbind') {
     exit;
 }
 
+if ($method === 'POST' && $path === '/revoke') {
+    $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    try {
+        $payload = $store->revokeIfAuthorized(
+            (string) ($body['license_id'] ?? ''),
+            (string) ($body['token'] ?? ''),
+        );
+        $private = (string) file_get_contents($var . '/private.pem');
+        $doc = Signer::sign($payload, $private);
+        echo json_encode($doc, JSON_UNESCAPED_SLASHES);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($method === 'POST' && $path === '/refresh') {
     $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
     try {

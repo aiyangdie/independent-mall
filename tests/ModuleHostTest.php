@@ -213,6 +213,28 @@ final class ModuleHostTest extends TestCase
         $this->assertFalse($health['license_required']);
         $this->assertFalse($health['network_required']);
 
+        $revoked = Signer::sign([
+            'license_id' => 'lic_kernel',
+            'instance_id' => 'shop-test',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $now),
+            'last_refresh_at' => gmdate('c', $now),
+            'expires_at' => gmdate('c', $now + 86400),
+            'grace_days' => 14,
+            'revoked' => true,
+        ], $pair['private']);
+        $kernel->handle(new Request('POST', '/admin/license', [], [
+            '_csrf' => $token,
+            'license_json' => (string) json_encode($revoked),
+            'public_pem' => $pair['public'],
+        ], [], []));
+        $stopped = $kernel->handle(new Request('GET', '/', [], [], [], []));
+        $this->assertStringContainsString('lawful trade', $stopped->body());
+        $this->assertStringNotContainsString('Sample commercial notice', $stopped->body());
+        $mods = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
+        $this->assertStringContainsString('revoked', $mods->body());
+        $this->assertStringContainsString('checkout still works', $mods->body());
+
         $kernel->handle(new Request('POST', '/admin/modules/sample-notice/disable', [], ['_csrf' => $token], [], []));
         $off = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertStringNotContainsString('Sample commercial notice', $off->body());

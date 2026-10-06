@@ -107,6 +107,21 @@ final class Store
         $this->audit($id, 'revoke', []);
     }
 
+    /**
+     * Marks the license revoked and returns a payload the issuer can sign for shops.
+     *
+     * @return array<string, mixed>
+     */
+    public function revokeIfAuthorized(string $id, string $token): array
+    {
+        $row = $this->requireRow($id, $token);
+        if ((int) $row['revoked'] !== 1) {
+            $this->revoke($id);
+            $row['revoked'] = 1;
+        }
+        return $this->payloadFromRow($row, true);
+    }
+
     public function unbind(string $id): string
     {
         $nonce = bin2hex(random_bytes(16));
@@ -121,31 +136,50 @@ final class Store
      */
     public function refresh(string $id, string $token, string $instanceId): array
     {
+        $row = $this->requireRow($id, $token);
+        $instanceId = $this->requireInstanceId($instanceId);
+        $bound = (string) ($row['instance_id'] ?? '');
+        if ($bound === '' || $bound !== $instanceId) {
+            throw new \DomainException('License is not bound to this instance.');
+        }
+        if ((int) $row['revoked'] === 1) {
+            $this->audit($id, 'refresh', ['instance_id' => $instanceId, 'revoked' => true]);
+            return $this->payloadFromRow($row, true);
+        }
+        $this->audit($id, 'refresh', ['instance_id' => $instanceId]);
+        return $this->payloadFromRow($row, false);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requireRow(string $id, string $token): array
+    {
         $stmt = $this->pdo->prepare('SELECT * FROM licenses WHERE id = :i');
         $stmt->execute(['i' => $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!is_array($row) || !hash_equals((string) $row['token_hash'], hash('sha256', $token))) {
             throw new \DomainException('Unknown license.');
         }
-        if ((int) $row['revoked'] === 1) {
-            throw new \DomainException('License revoked.');
-        }
-        $instanceId = $this->requireInstanceId($instanceId);
-        $bound = (string) ($row['instance_id'] ?? '');
-        if ($bound === '' || $bound !== $instanceId) {
-            throw new \DomainException('License is not bound to this instance.');
-        }
-        $this->audit($id, 'refresh', ['instance_id' => $instanceId]);
+        return $row;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function payloadFromRow(array $row, bool $revoked): array
+    {
         $ents = json_decode((string) $row['entitlements'], true);
         return [
-            'license_id' => $id,
-            'instance_id' => $instanceId,
+            'license_id' => (string) $row['id'],
+            'instance_id' => (string) ($row['instance_id'] ?? ''),
             'entitlements' => is_array($ents) ? $ents : [],
             'issued_at' => (string) $row['created_at'],
             'last_refresh_at' => gmdate('c'),
             'expires_at' => $row['expires_at'],
             'grace_days' => (int) $row['grace_days'],
-            'revoked' => false,
+            'revoked' => $revoked,
         ];
     }
 

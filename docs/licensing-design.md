@@ -25,7 +25,7 @@ Distributed under a commercial agreement. Activation:
 3. License server binds the instance, consumes the nonce, and returns signed JSON. Replaying the same activate body fails. After unbind, a new nonce is issued.
 4. Client verifies with the **embedded public key**.
 5. Refresh in admin cron uses the token (not the spent nonce); 14-day grace on network failure.
-6. Expiry disables commercial packages only.
+6. Expiry or revocation disables commercial packages only. Refresh after revoke stores `"revoked": true`; Community checkout stays up.
 
 Signature: OpenSSL Ed25519 (`OPENSSL_KEYTYPE_ED25519` on PHP 8.5). If Ed25519 is unavailable the issuer and verifier fail closed. Private keys live only under `apps/license-server/var/` (gitignored). Community Core verifies `var/license.json` with a public key and never phones home on storefront requests. After `expires_at`, `grace_days` (default 14) still allow already-issued entitlements using `last_refresh_at`. Revocation and signature tampering deny commercial modules only.
 

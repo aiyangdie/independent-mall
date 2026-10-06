@@ -319,6 +319,7 @@ final class Kernel
             'instance_id' => (string) ($payload['instance_id'] ?? ''),
             'expires_at' => (string) ($payload['expires_at'] ?? ''),
             'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
+            'revoked' => !empty($payload['revoked']),
         ];
     }
 

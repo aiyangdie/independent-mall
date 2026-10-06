@@ -289,6 +289,52 @@ final class LicenseTest extends TestCase
         $store->activate('lic_once', 'token-once-xxxx', 'host-a', $nonce);
     }
 
+    public function testRevokeStopsActivateAndRefreshReturnsRevokedPayload(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $nonce = $store->issue('lic_rev', 'token-revoke-xx', ['storefront_notice'], gmdate('c', time() + 86400));
+        $store->activate('lic_rev', 'token-revoke-xx', 'host-a', $nonce);
+        $revoked = $store->revokeIfAuthorized('lic_rev', 'token-revoke-xx');
+        $this->assertTrue($revoked['revoked']);
+        $this->assertSame('host-a', $revoked['instance_id']);
+        $pulled = $store->refresh('lic_rev', 'token-revoke-xx', 'host-a');
+        $this->assertTrue($pulled['revoked']);
+        $this->expectException(\DomainException::class);
+        $store->activate('lic_rev', 'token-revoke-xx', 'host-b', $nonce);
+    }
+
+    public function testAdminRefreshStoresRevokedDocument(): void
+    {
+        $pair = Signer::generateKeypair();
+        $dir = sys_get_temp_dir() . '/im-ref-rev-' . bin2hex(random_bytes(3));
+        mkdir($dir . '/var', 0775, true);
+        $issued = time();
+        $payload = [
+            'license_id' => 'lic_r',
+            'instance_id' => 'shop-1',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $issued),
+            'last_refresh_at' => gmdate('c', $issued),
+            'expires_at' => gmdate('c', $issued + 3600),
+            'grace_days' => 14,
+            'revoked' => false,
+        ];
+        file_put_contents($dir . '/var/license.json', json_encode(Signer::sign($payload, $pair['private'])));
+        file_put_contents($dir . '/var/license-public.pem', $pair['public']);
+        $revoked = $payload;
+        $revoked['revoked'] = true;
+        $revoked['last_refresh_at'] = gmdate('c', $issued + 10);
+        $ok = new RecordingTransport(Signer::sign($revoked, $pair['private']));
+        (new AdminRefresh($dir, $ok))->refresh('http://127.0.0.1:8091', 'lic_r', 'tok', 'shop-1');
+        $gate = new FileLicenseGate($dir . '/var/license.json', $dir . '/var/license-public.pem', new FrozenClock($issued + 20));
+        $this->assertFalse($gate->allows(['storefront_notice']));
+        $stored = $gate->payload();
+        $this->assertIsArray($stored);
+        $this->assertTrue(!empty($stored['revoked']));
+    }
+
     public function testActivateRejectsBlankInstanceId(): void
     {
         $pdo = new \PDO('sqlite::memory:');
@@ -307,6 +353,7 @@ final class LicenseTest extends TestCase
         $this->assertStringNotContainsString('IndependentMall\\Kernel', $boot);
         $http = (string) file_get_contents($root . '/public/index.php');
         $this->assertStringContainsString("bootstrap.php", $http);
+        $this->assertStringContainsString('/revoke', $http);
         $this->assertStringNotContainsString('IndependentMall\\Kernel', $http);
         $this->assertStringNotContainsString('eval(', $http);
         require $root . '/bootstrap.php';
