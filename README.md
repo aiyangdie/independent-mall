@@ -48,6 +48,8 @@ php tests\http_storefront_smoke.php
 php tests\http_commerce_smoke.php
 ```
 
+`tests/HttpCrossAppLicenseE2ETest.php` (included in PHPUnit) starts two isolated PHP built-in servers and walks OfficialSite Fake buy → license download → Community trust-key + import → enable `sample-notice` over real HTTP.
+
 HTTP scripts expect the Community shop at `http://127.0.0.1:8090/` (`/healthz` must show `"edition":"community"`).
 
 ## License

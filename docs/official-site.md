@@ -27,4 +27,4 @@ On Community:
 2. Paste only the signed JSON via `POST /admin/license` (rejects `public_pem` on this route).
 3. Failed imports leave the previous `var/license.json` and trust key untouched.
 
-Ownership is enforced on download; guests get 401; foreign ids get 400. End-to-end coverage: `tests/CrossAppLicenseE2ETest.php`. Manual ops notes: `docs/human-acceptance.md`.
+Ownership is enforced on download; guests get 401; foreign ids get 400. Coverage: `tests/CrossAppLicenseE2ETest.php` (in-process) and `tests/HttpCrossAppLicenseE2ETest.php` (two HTTP servers). Manual ops notes: `docs/human-acceptance.md`.

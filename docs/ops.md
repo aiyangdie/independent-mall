@@ -11,7 +11,7 @@ How this was checked on the development host (loopback, not a NIC unplug):
 1. `GET /healthz` returns `"license_required": false` and `"network_required": false`, plus a `license` object (`mode` `absent`|`offline_file`, `valid`, optional `product_code` / `entitlements` / `revoked`). Never tokens, nonces, or private keys.
 2. `tests/OfflineCoreTest.php` asserts no other `src/` file calls `curl_init`.
 3. PHPUnit boots the kernel with `sqlite:///:memory:` and still serves `/` and `/healthz`.
-4. Cross-app offline paste is covered by `tests/CrossAppLicenseE2ETest.php`.
+4. Cross-app offline paste is covered by `tests/CrossAppLicenseE2ETest.php` (in-process) and `tests/HttpCrossAppLicenseE2ETest.php` (two real PHP built-in servers).
 
 A physical cable pull was not performed. Equivalence: those paths never open an outbound socket. Human NIC/spare-machine checklist: [human-acceptance.md](human-acceptance.md).
 

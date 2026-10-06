@@ -28,7 +28,7 @@ Record date, browser/OS, and who checked. Leave unchecked until done.
 
 ## Cross-app demo (already automated)
 
-Automated coverage lives in `tests/CrossAppLicenseE2ETest.php` (OfficialSite Fake buy → license JSON/PEM download → Community `/admin/license` import → migrate/enable `sample-notice`, plus tamper/wrong-key/expired/revoked/no-entitlement and commerce-still-works). Optional human walkthrough:
+Automated coverage: `tests/CrossAppLicenseE2ETest.php` (in-process) and `tests/HttpCrossAppLicenseE2ETest.php` (two real PHP servers). Optional human walkthrough:
 
 1. Buy Fake SKU on `apps/www` account center.
 2. Download `license.json` + note the public-key fingerprint from `license-public.pem`.
