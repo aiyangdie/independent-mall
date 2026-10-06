@@ -75,9 +75,9 @@ CREATE TABLE product_reports (
 );
 
 INSERT INTO categories (slug, name, sort, status) VALUES
-    ('physical-goods', 'Physical goods', 1, 'active'),
-    ('digital-goods', 'Licensed digital goods', 2, 'active'),
-    ('services', 'Professional services', 3, 'active');
+    ('physical-goods', '实体商品', 1, 'active'),
+    ('digital-goods', '正版数字商品', 2, 'active'),
+    ('services', '专业服务', 3, 'active');
 
 INSERT INTO prohibited_product_rules (pattern, match_field, action, enabled) VALUES
     ('刷赞', 'any', 'block_publish', 1),

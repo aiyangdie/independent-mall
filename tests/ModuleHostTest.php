@@ -112,7 +112,7 @@ final class ModuleHostTest extends TestCase
         $this->assertContains('sample-notice', $ids);
         $host->migrate('sample-notice', null);
         $host->enable('sample-notice', null);
-        $this->assertStringContainsString('community checkout still works', $host->storefrontNotice());
+        $this->assertStringContainsString('社区版结账仍可正常使用', $host->storefrontNotice());
         $host->disable('sample-notice', null);
         $this->assertSame('', $host->storefrontNotice());
         $host->uninstall('sample-notice', null);
@@ -131,8 +131,8 @@ final class ModuleHostTest extends TestCase
         $kernel = new Kernel(Config::load($this->root), $this->pdo, $auth, new Csrf(), new Renderer($this->root . '/templates'), new Router());
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
-        $this->assertStringContainsString('lawful trade', $home->body());
-        $this->assertStringNotContainsString('Sample commercial notice', $home->body());
+        $this->assertStringContainsString('正规商品', $home->body());
+        $this->assertStringNotContainsString('示例商业公告', $home->body());
         $health = $kernel->handle(new Request('GET', '/healthz', [], [], [], []));
         $payload = json_decode($health->body(), true);
         $this->assertFalse($payload['license_required']);
@@ -205,12 +205,12 @@ final class ModuleHostTest extends TestCase
         $enable = $kernel->handle(new Request('POST', '/admin/modules/sample-notice/enable', [], ['_csrf' => $token], [], []));
         $this->assertSame(302, $enable->status());
         $page = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
-        $this->assertStringContainsString('Local entitlement: yes', $page->body());
+        $this->assertStringContainsString('本地授权：是', $page->body());
         $this->assertStringContainsString('lic_kernel', $page->body());
         $this->assertStringContainsString('shop-test', $page->body());
-        $this->assertStringContainsString('bound to', $page->body());
+        $this->assertStringContainsString('绑定实例', $page->body());
         $this->assertStringContainsString('sample-notice@1.0.0', $page->body());
-        $this->assertStringContainsString('Issuer customer', $page->body());
+        $this->assertStringContainsString('客户编号', $page->body());
         $this->assertStringContainsString('cust_demo', $page->body());
         $audit = $this->pdo->query("SELECT action, entity_id, meta FROM audit_logs WHERE action = 'license.store'")->fetch(\PDO::FETCH_ASSOC);
         $this->assertIsArray($audit);
@@ -223,8 +223,8 @@ final class ModuleHostTest extends TestCase
         $this->assertStringContainsString('name="action"', $filtered->body());
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
-        $this->assertStringContainsString('Sample commercial notice', $home->body());
-        $this->assertStringContainsString('lawful trade', $home->body());
+        $this->assertStringContainsString('示例商业公告', $home->body());
+        $this->assertStringContainsString('正规商品', $home->body());
         $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
         $this->assertFalse($health['license_required']);
         $this->assertFalse($health['network_required']);
@@ -249,14 +249,14 @@ final class ModuleHostTest extends TestCase
             'license_json' => (string) json_encode($revoked),
         ], [], []));
         $stopped = $kernel->handle(new Request('GET', '/', [], [], [], []));
-        $this->assertStringContainsString('lawful trade', $stopped->body());
-        $this->assertStringNotContainsString('Sample commercial notice', $stopped->body());
+        $this->assertStringContainsString('正规商品', $stopped->body());
+        $this->assertStringNotContainsString('示例商业公告', $stopped->body());
         $mods = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
-        $this->assertStringContainsString('revoked', $mods->body());
-        $this->assertStringContainsString('checkout still works', $mods->body());
+        $this->assertStringContainsString('已吊销', $mods->body());
+        $this->assertStringContainsString('社区版下单不受影响', $mods->body());
 
         $kernel->handle(new Request('POST', '/admin/modules/sample-notice/disable', [], ['_csrf' => $token], [], []));
         $off = $kernel->handle(new Request('GET', '/', [], [], [], []));
-        $this->assertStringNotContainsString('Sample commercial notice', $off->body());
+        $this->assertStringNotContainsString('示例商业公告', $off->body());
     }
 }

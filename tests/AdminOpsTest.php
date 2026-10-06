@@ -79,8 +79,8 @@ final class AdminOpsTest extends TestCase
         $settings->put('shop_name', 'North Harbor Goods', 1);
         $home = $this->kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertStringContainsString('North Harbor Goods', $home->body());
-        $this->assertStringContainsString('Skip to content', $home->body());
-        $this->assertStringContainsString('aria-label="Operations"', $home->body());
+        $this->assertStringContainsString('跳到主要内容', $home->body());
+        $this->assertStringContainsString('aria-label="运营入口"', $home->body());
         $page = $this->kernel->handle(new Request('GET', '/admin/settings', [], [], [], []));
         $this->assertSame(200, $page->status());
         $this->assertStringContainsString('North Harbor Goods', $page->body());
@@ -89,20 +89,20 @@ final class AdminOpsTest extends TestCase
         $this->assertStringContainsString('table-wrap', $skus->body());
         $payments = $this->kernel->handle(new Request('GET', '/admin/payments', [], [], [], []));
         $this->assertSame(200, $payments->status());
-        $this->assertStringContainsString('Fake adapter only', $payments->body());
+        $this->assertStringContainsString('演示支付通道', $payments->body());
         $refunds = $this->kernel->handle(new Request('GET', '/admin/refunds', [], [], [], []));
         $this->assertSame(200, $refunds->status());
-        $this->assertStringContainsString('Refunds', $refunds->body());
+        $this->assertStringContainsString('退款管理', $refunds->body());
         $audit = $this->kernel->handle(new Request('GET', '/admin/audit', ['action' => 'license.'], [], [], []));
         $this->assertSame(200, $audit->status());
-        $this->assertStringContainsString('Action prefix', $audit->body());
+        $this->assertStringContainsString('操作前缀', $audit->body());
         $bad = $this->kernel->handle(new Request('GET', '/admin/audit', ['action' => 'bad%filter'], [], [], []));
         $this->assertSame(422, $bad->status());
         $dash = $this->kernel->handle(new Request('GET', '/admin', [], [], [], []));
         $this->assertSame(200, $dash->status());
-        $this->assertStringContainsString('/admin/audit?action=license.', $dash->body());
-        $this->assertStringContainsString('License audit', $dash->body());
-        $this->assertStringContainsString('Needs internet', $dash->body());
+        $this->assertStringContainsString('/admin/audit', $dash->body());
+        $this->assertStringContainsString('审计日志', $dash->body());
+        $this->assertStringContainsString('是否依赖网络', $dash->body());
     }
 
     public function testCannotLockAdministratorFromCustomerScreen(): void

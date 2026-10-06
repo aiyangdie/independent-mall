@@ -19,7 +19,7 @@ final class SampleNoticeModule implements Module
 
     public function label(): string
     {
-        return 'Storefront notice (sample commercial module)';
+        return '店面公告（示例商业模块）';
     }
 
     public function entitlements(): array
@@ -39,7 +39,7 @@ final class SampleNoticeModule implements Module
         $n = $pdo->query('SELECT COUNT(*) FROM commercial_sample_notices')->fetchColumn();
         if ((int) $n === 0) {
             $pdo->prepare('INSERT INTO commercial_sample_notices (body, updated_at) VALUES (:b, :t)')
-                ->execute(['b' => 'Sample commercial notice: community checkout still works if this module is off.', 't' => gmdate('c')]);
+                ->execute(['b' => '示例商业公告：关闭本模块后，社区版结账仍可正常使用。', 't' => gmdate('c')]);
         }
     }
 

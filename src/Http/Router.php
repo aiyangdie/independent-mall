@@ -31,6 +31,6 @@ final class Router
                 return ($route['handler'])($request, $matches);
             }
         }
-        return Response::html('Not found', 404);
+        return Response::html('页面不存在', 404);
     }
 }

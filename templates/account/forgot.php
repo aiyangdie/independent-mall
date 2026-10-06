@@ -2,12 +2,12 @@
 ob_start();
 ?>
 <section class="narrow">
-    <h1>Reset password</h1>
+    <h1>重置密码</h1>
     <?php if (!empty($notice)): ?><p><?= $e($notice) ?></p><?php endif; ?>
     <form method="post" action="/forgot">
         <?= $csrf ?>
-        <label>Email <input type="email" name="email" required></label>
-        <button type="submit">Send reset</button>
+        <label>邮箱 <input type="email" name="email" required></label>
+        <button type="submit">发送重置链接</button>
     </form>
 </section>
 <?php

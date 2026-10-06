@@ -3,14 +3,14 @@ use IndependentMall\Catalog\Money;
 ob_start();
 ?>
 <section>
-    <h1>Payment result</h1>
-    <p>Order <?= $e($order['public_id'] ?? '') ?> is now <strong><?= $e($order['status'] ?? '') ?></strong>.</p>
-    <p>Amount <?= $e(Money::format((int) ($order['payable_minor'] ?? 0), (string) ($order['currency'] ?? 'CNY'))) ?> (fake gateway, not a live charge).</p>
+    <h1>支付结果</h1>
+    <p>订单 <?= $e($order['public_id'] ?? '') ?> 当前状态为 <strong><?= $e($order['status'] ?? '') ?></strong>。</p>
+    <p>金额 <?= $e(Money::format((int) ($order['payable_minor'] ?? 0), (string) ($order['currency'] ?? 'CNY'))) ?>（演示支付通道，不会真实扣款）。</p>
     <?php if (!empty($payments)): ?>
         <div class="table-wrap">
         <table>
-            <caption>Payment attempts</caption>
-            <thead><tr><th>Provider</th><th>Status</th><th>Amount</th><th>Reference</th></tr></thead>
+            <caption>支付尝试记录</caption>
+            <thead><tr><th>渠道</th><th>状态</th><th>金额</th><th>参考号</th></tr></thead>
             <tbody>
             <?php foreach ($payments as $p): ?>
                 <tr>
@@ -25,14 +25,14 @@ ob_start();
         </div>
     <?php endif; ?>
     <?php if (!empty($flash_tokens)): ?>
-        <p>Download links (shown once):</p>
+        <p>下载链接（仅显示一次）：</p>
         <ul>
             <?php foreach ($flash_tokens as $tok): ?>
-                <li><a href="/deliveries/<?= $e($tok) ?>">Download delivery</a></li>
+                <li><a href="/deliveries/<?= $e($tok) ?>">下载交付物</a></li>
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>
-    <p><a href="/orders/<?= $e($order['id'] ?? '') ?>">View order</a></p>
+    <p><a href="/orders/<?= $e($order['id'] ?? '') ?>">查看订单</a></p>
 </section>
 <?php
 $content = ob_get_clean();

@@ -3,20 +3,20 @@ ob_start();
 $action_filter = (string) ($action_filter ?? '');
 ?>
 <section>
-    <p><a href="/admin">Dashboard</a></p>
-    <h1>Audit log</h1>
+    <p><a href="/admin">返回后台首页</a></p>
+    <h1>审计日志</h1>
     <?php if (!empty($error)): ?><p class="alert" role="alert"><?= $e($error) ?></p><?php endif; ?>
     <form method="get" action="/admin/audit" role="search">
-        <label>Action prefix <input name="action" value="<?= $e($action_filter) ?>" placeholder="license."></label>
-        <button type="submit">Filter</button>
+        <label>操作前缀 <input name="action" value="<?= $e($action_filter) ?>" placeholder="license."></label>
+        <button type="submit">筛选</button>
         <?php if ($action_filter !== ''): ?>
-            <a href="/admin/audit">Clear</a>
+            <a href="/admin/audit">清除筛选</a>
         <?php endif; ?>
     </form>
-    <p class="muted">Examples: <code>license.</code> for store/refresh, <code>module.</code> for module lifecycle.</p>
+    <p class="muted">示例：<code>license.</code> 查看授权存储/刷新，<code>module.</code> 查看模块生命周期。</p>
     <div class="table-wrap">
     <table>
-        <thead><tr><th>ID</th><th>Time</th><th>Action</th><th>Entity</th></tr></thead>
+        <thead><tr><th>编号</th><th>时间</th><th>操作</th><th>对象</th></tr></thead>
         <tbody>
         <?php foreach ($rows as $row): ?>
             <tr>

@@ -6,18 +6,18 @@ ob_start();
     <p class="notice" role="status"><?= $e($notice) ?></p>
 <?php endif; ?>
 <section class="hero">
-    <h1>Goods and services for lawful trade</h1>
-    <p>Physical products, licensed digital goods, memberships, and professional services. Listings that promote fraud, infringement, cheats, or unofficial virtual items are blocked by policy.</p>
+    <h1>正规商品与服务交易</h1>
+    <p>实体商品、正版数字商品、会员与专业服务。宣传欺诈、侵权、外挂或无资质虚拟物品的上架会被策略拦截。</p>
 </section>
 <?php if (!empty($categories)): ?>
-    <nav class="chips" aria-label="Categories">
+    <nav class="chips" aria-label="分类">
         <?php foreach ($categories as $c): ?>
             <a href="/c/<?= $e($c['slug']) ?>"><?= $e($c['name']) ?></a>
         <?php endforeach; ?>
     </nav>
 <?php endif; ?>
 <?php if ($products === []): ?>
-    <p>No published listings yet.</p>
+    <p>暂无已上架商品。</p>
 <?php else: ?>
 <section class="grid">
     <?php foreach ($products as $p): ?>

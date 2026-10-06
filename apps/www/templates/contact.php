@@ -1,3 +1,3 @@
 <?php /** @var array<string, mixed> $data */ ?>
-<h1>Contact</h1>
-<p>No production mailbox is configured. Use the customer-center ticket form after you register. Do not send card numbers or private keys.</p>
+<h1>联系我们</h1>
+<p>当前尚未配置正式客服邮箱。注册后可在客户中心提交工单。请勿在工单中发送银行卡号、密码或私钥。</p>

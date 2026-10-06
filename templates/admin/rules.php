@@ -2,18 +2,18 @@
 ob_start();
 ?>
 <section>
-    <p><a href="/admin">Dashboard</a></p>
-    <h1>Prohibited listing rules</h1>
+    <p><a href="/admin">返回后台首页</a></p>
+    <h1>禁售规则</h1>
     <div class="table-wrap">
     <table>
-        <thead><tr><th>Pattern</th><th>Field</th><th>Action</th><th>Enabled</th></tr></thead>
+        <thead><tr><th>匹配内容</th><th>检查字段</th><th>处理方式</th><th>已启用</th></tr></thead>
         <tbody>
         <?php foreach ($rules as $r): ?>
             <tr>
                 <td><?= $e($r['pattern']) ?></td>
-                <td><?= $e($r['match_field']) ?></td>
-                <td><?= $e($r['action']) ?></td>
-                <td><?= ((int) $r['enabled'] === 1) ? 'yes' : 'no' ?></td>
+                <td><?= $e(\IndependentMall\Support\Chinese::label($r['match_field'])) ?></td>
+                <td><?= $e(\IndependentMall\Support\Chinese::label($r['action'])) ?></td>
+                <td><?= ((int) $r['enabled'] === 1) ? '是' : '否' ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody>

@@ -98,11 +98,11 @@ final class CrossAppLicenseE2ETest extends TestCase
 
         $account = $site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertSame(200, $account->status());
-        $this->assertStringContainsString('fake_completed', $account->body());
+        $this->assertStringContainsString('演示订单完成', $account->body());
         $this->assertStringContainsString('/account/license.json?id=', $account->body());
         $this->assertStringContainsString('license-public.pem', $account->body());
-        $this->assertStringContainsString('Community', $account->body());
-        preg_match('/License (lic_[a-f0-9]+) token \(shown once\): ([a-f0-9]+) nonce \(shown once\): ([a-f0-9]+)/', $account->body(), $shown);
+        $this->assertStringContainsString('社区版', $account->body());
+        preg_match('/授权编号 (lic_[a-f0-9]+).*授权令牌（仅显示一次）：([a-f0-9]+).*激活随机码（仅显示一次）：([a-f0-9]+)/u', $account->body(), $shown);
         $this->assertNotEmpty($shown, 'one-time token/nonce must appear after Fake buy');
         $licenseId = $shown[1];
         $secret = $shown[2];
@@ -258,12 +258,12 @@ final class CrossAppLicenseE2ETest extends TestCase
         $this->assertSame(302, $enable->status());
 
         $modules = $kernel->handle(new Request('GET', '/admin/modules', [], [], [], []));
-        $this->assertStringContainsString('Local entitlement: yes', $modules->body());
+        $this->assertStringContainsString('本地授权：是', $modules->body());
         $this->assertStringContainsString('sample-notice', $modules->body());
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
-        $this->assertStringContainsString('Sample commercial notice', $home->body());
-        $this->assertStringContainsString('lawful trade', $home->body());
+        $this->assertStringContainsString('示例商业公告', $home->body());
+        $this->assertStringContainsString('正规商品', $home->body());
 
         $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
         $this->assertIsArray($health);
@@ -410,8 +410,8 @@ final class CrossAppLicenseE2ETest extends TestCase
         $disable = $kernel->handle(new Request('POST', '/admin/modules/sample-notice/disable', [], ['_csrf' => $ctoken], [], []));
         $this->assertSame(302, $disable->status());
         $offHome = $kernel->handle(new Request('GET', '/', [], [], [], []));
-        $this->assertStringNotContainsString('Sample commercial notice', $offHome->body());
-        $this->assertStringContainsString('lawful trade', $offHome->body());
+        $this->assertStringNotContainsString('示例商业公告', $offHome->body());
+        $this->assertStringContainsString('正规商品', $offHome->body());
 
         $this->assertCommerceWorks($kernel, $auth, $csrfC, $communityRoot, 'shop-disabled@example.invalid', 'shopdisable1');
 
@@ -424,7 +424,7 @@ final class CrossAppLicenseE2ETest extends TestCase
         $this->assertFalse($degHealth['network_required']);
         $degHome = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $degHome->status());
-        $this->assertStringContainsString('lawful trade', $degHome->body());
+        $this->assertStringContainsString('正规商品', $degHome->body());
         $this->assertCommerceWorks($kernel, $auth, $csrfC, $communityRoot, 'shop-degraded@example.invalid', 'shopdegrade1');
     }
 
@@ -501,7 +501,7 @@ final class CrossAppLicenseE2ETest extends TestCase
 
         $product = $kernel->handle(new Request('GET', '/p/ceramic-mug', [], [], [], []));
         $this->assertSame(200, $product->status());
-        $this->assertStringContainsString('Ceramic mug', $product->body());
+        $this->assertStringContainsString('陶瓷杯', $product->body());
         $this->assertMatchesRegularExpression('/name="variant_id" value="(\d+)"/', $product->body());
         preg_match('/name="variant_id" value="(\d+)"/', $product->body(), $vm);
 
@@ -548,7 +548,7 @@ final class CrossAppLicenseE2ETest extends TestCase
 
         $paid = $kernel->handle(new Request('GET', '/orders/' . $om[1], [], [], [], []));
         $this->assertSame(200, $paid->status());
-        $this->assertStringContainsString('completed', $paid->body());
+        $this->assertStringContainsString('已完成', $paid->body());
     }
 
     private function assertDoesNotLeakSecrets(string $haystack, string $privatePem): void

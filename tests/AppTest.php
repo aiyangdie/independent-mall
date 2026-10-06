@@ -102,20 +102,20 @@ final class AppTest extends TestCase
 
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
-        $this->assertStringContainsString('lawful trade', $home->body());
+        $this->assertStringContainsString('正规商品', $home->body());
         $this->assertStringNotContainsString('彩虹', $home->body());
         $this->assertStringContainsString('/legal/refunds', $home->body());
         $this->assertStringContainsString('/legal/prohibited', $home->body());
-        $this->assertStringContainsString('aria-label="Legal"', $home->body());
+        $this->assertStringContainsString('aria-label="法律信息"', $home->body());
         foreach (['/legal/refunds', '/legal/prohibited', '/legal/disclaimer'] as $path) {
             $legal = $kernel->handle(new Request('GET', $path, [], [], [], []));
             $this->assertSame(200, $legal->status(), $path);
-            $this->assertStringContainsString('Draft only', $legal->body());
-            $this->assertStringContainsString('Counsel has not reviewed', $legal->body());
+            $this->assertStringContainsString('草案', $legal->body());
+            $this->assertStringContainsString('未经律师审核', $legal->body());
             $this->assertStringNotContainsString('代刷', $legal->body());
         }
         $ban = $kernel->handle(new Request('GET', '/legal/prohibited', [], [], [], []));
-        $this->assertStringContainsString('account trading', $ban->body());
+        $this->assertStringContainsString('账号交易', $ban->body());
 
         $health = $kernel->handle(new Request('GET', '/healthz', [], [], [], []));
         $this->assertSame(200, $health->status());
@@ -151,7 +151,7 @@ final class AppTest extends TestCase
             'password' => 'correct-horse-1',
         ], [], []));
         $this->assertSame(422, $denied->status());
-        $this->assertStringContainsString('Accept the draft terms', $denied->body());
+        $this->assertStringContainsString('请先勾选并接受', $denied->body());
         $ok = $kernel->handle(new Request('POST', '/register', [], [
             '_csrf' => $token,
             'email' => 'newbie@example.invalid',

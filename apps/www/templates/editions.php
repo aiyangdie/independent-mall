@@ -1,13 +1,13 @@
 <?php /** @var array<string, mixed> $data */ ?>
-<h1>Community and commercial</h1>
+<h1>社区版与商业版</h1>
 <div class="table-wrap">
 <table>
-    <thead><tr><th></th><th>Community</th><th>Commercial add-ons</th></tr></thead>
+    <thead><tr><th>功能</th><th>社区版</th><th>商业增强模块</th></tr></thead>
     <tbody>
-    <tr><td>Install and sell ordinary goods</td><td>Included</td><td>Included</td></tr>
-    <tr><td>License server required to boot</td><td>No</td><td>No (shop still boots)</td></tr>
-    <tr><td>Sample storefront notice module</td><td>—</td><td>Entitlement <code>storefront_notice</code></td></tr>
-    <tr><td>Source of entitlements</td><td>None</td><td>Signed Ed25519 document on disk</td></tr>
+    <tr><td>安装并销售合规商品</td><td>包含</td><td>包含</td></tr>
+    <tr><td>启动是否需要授权服务器</td><td>不需要</td><td>不需要（商城仍可启动）</td></tr>
+    <tr><td>示例前台公告模块</td><td>—</td><td>需要 <code>storefront_notice</code> 权益</td></tr>
+    <tr><td>商业权益来源</td><td>无</td><td>保存在本机的 Ed25519 签名文件</td></tr>
     </tbody>
 </table>
 </div>

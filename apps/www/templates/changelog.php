@@ -1,19 +1,18 @@
 <?php /** @var array<string, mixed> $data */ ?>
-<h1>Changelog</h1>
+<h1>更新日志</h1>
 <p class="callout callout-fake" role="status">
-    Development builds only. Purchases on this site use a <strong>Fake</strong> adapter. Nothing here is a production release channel.
+    当前仅为开发构建。本站购买流程使用<strong>演示支付</strong>，这里尚不是生产发布通道。
 </p>
 <ol>
     <li>
-        <strong>0.1.1-dev</strong> — Update inspect failure matrix (no auto-install / no file mutation); dual-HTTP cross-app E2E; atomic license import + pinned trust public key; FileLicenseGate::isValid; download signed license JSON + public PEM; pricing/docs Fake demo path; Fake renew orders; tickets; single-use downloads;
-        license issuer renew; register terms checkbox; license status recent_audit; purge + data inventory;
-        license status (bound/revoked); admin audit action filter; pricing Fake-only / counsel callouts;
-        focus and reduced-motion CSS anchors; empty-tree install smoke in PHPUnit. Still not a production release.
+        <strong>0.1.1-dev</strong> — 更新检查失败矩阵（不自动安装、不修改文件）；双 HTTP 服务跨应用端到端测试；原子授权导入和固定信任公钥；本地授权有效性检查；下载签名授权 JSON 与公钥；价格与文档演示流程；演示续费订单；工单；单次下载；
+        授权中心续费；注册条款确认；授权最近审计状态；数据清理与清单；绑定/吊销状态；后台审计筛选；价格页演示与法律提示；
+        焦点样式和减少动画支持；空目录安装冒烟测试。此版本仍不是正式生产版。
     </li>
     <li>
-        <strong>0.1.1</strong> — Signed notes artifact for the update-verifier demo. Still not a production release.
+        <strong>0.1.1</strong> — 用于更新验证演示的签名说明文件，仍不是正式生产版。
     </li>
     <li>
-        <strong>0.1.0-dev</strong> — Community core stages 0–7 plus official-site slice. Unsigned snapshot.
+        <strong>0.1.0-dev</strong> — 社区版核心阶段 0–7 与官网基础功能，未签名快照。
     </li>
 </ol>

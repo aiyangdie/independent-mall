@@ -19,11 +19,11 @@ final class LayoutCssTest extends TestCase
         $this->assertStringContainsString('max-width: 100%', $css);
         $this->assertStringContainsString('.table-wrap { overflow-x: auto', $css);
         $this->assertStringContainsString('prefers-reduced-motion', $css);
-        $this->assertStringContainsString('--muted: #3f3b34', $css);
+        $this->assertStringContainsString('--muted: #4a5a68', $css);
         $this->assertStringContainsString('--accent: #0a4a3d', $css);
         $this->assertStringContainsString('outline: 3px solid', $css);
         $this->assertStringContainsString('button {', $css);
-        $this->assertStringContainsString('color: #fffdf8', $css);
+        $this->assertStringContainsString('color: #ffffff', $css);
         $this->assertStringContainsString('min-height: 2.5rem', $css);
     }
 
@@ -57,9 +57,9 @@ final class LayoutCssTest extends TestCase
         }
         $this->assertGreaterThan(5, $checked);
         $layout = (string) file_get_contents($root . '/layout.php');
-        $this->assertStringContainsString('Skip to content', $layout);
-        $this->assertStringContainsString('aria-label="Operations"', $layout);
-        $this->assertStringContainsString('aria-label="Legal"', $layout);
+        $this->assertStringContainsString('跳到主要内容', $layout);
+        $this->assertStringContainsString('aria-label="运营入口"', $layout);
+        $this->assertStringContainsString('aria-label="法律信息"', $layout);
         $this->assertStringContainsString('/legal/prohibited', $layout);
         $this->assertStringContainsString('id="main"', $layout);
     }

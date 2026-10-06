@@ -1,3 +1,3 @@
 <?php /** @var array<string, mixed> $data */ ?>
-<h1>Not found</h1>
-<p>That page is not on the official site.</p>
+<h1>页面不存在</h1>
+<p>官网中没有找到这个页面，请检查地址或返回首页。</p>

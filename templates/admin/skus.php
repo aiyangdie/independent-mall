@@ -2,11 +2,11 @@
 ob_start();
 ?>
 <section>
-    <p><a href="/admin">Dashboard</a></p>
-    <h1>SKUs and inventory</h1>
+    <p><a href="/admin">返回后台首页</a></p>
+    <h1>商品规格与库存</h1>
     <div class="table-wrap">
     <table>
-        <thead><tr><th>SKU</th><th>Product</th><th>Price</th><th>On hand</th><th>Reserved</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>SKU</th><th>商品</th><th>价格（分）</th><th>现有库存</th><th>已预留</th><th>状态</th><th>调整库存</th></tr></thead>
         <tbody>
         <?php foreach ($skus as $s): ?>
             <tr>
@@ -15,13 +15,13 @@ ob_start();
                 <td><?= $e($s['price_minor']) ?> <?= $e($s['currency']) ?></td>
                 <td><?= $e($s['on_hand']) ?></td>
                 <td><?= $e($s['reserved']) ?></td>
-                <td><?= $e($s['status']) ?> / <?= $e($s['product_status']) ?></td>
+                <td><?= $e(\IndependentMall\Support\Chinese::label($s['status'])) ?> / <?= $e(\IndependentMall\Support\Chinese::label($s['product_status'])) ?></td>
                 <td>
                     <form method="post" action="/admin/skus/<?= $e($s['id']) ?>/stock">
                         <?= $csrf ?>
-                        <label>Delta <input name="delta" type="number" value="1"></label>
-                        <label>Reference <input name="reference" placeholder="idempotency key"></label>
-                        <button type="submit">Adjust</button>
+                        <label>增减数量 <input name="delta" type="number" value="1"></label>
+                        <label>业务流水号 <input name="reference" placeholder="用于防止重复调整" required></label>
+                        <button type="submit">确认调整</button>
                     </form>
                 </td>
             </tr>

@@ -3,14 +3,14 @@
 $r = $data['report'];
 $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 ?>
-<h1>Check updates</h1>
-<p>This page verifies metadata only. It does not replace files, run PHP, or fetch a remote installer.</p>
+<h1>检查更新</h1>
+<p>此页面只验证更新元数据，不会替换文件、执行 PHP 或下载远程安装程序。</p>
 <ul>
-    <li>Unsigned channel: <?= $e((string) $r['unsigned']) ?></li>
-    <li>Signed channel: <?= $e((string) $r['signed']) ?></li>
-    <li>Version: <?= $e((string) $r['version']) ?></li>
+    <li>未签名通道：<?= $e((string) $r['unsigned']) ?></li>
+    <li>签名通道：<?= $e((string) $r['signed']) ?></li>
+    <li>版本：<?= $e((string) $r['version']) ?></li>
     <li>SHA-256: <code><?= $e((string) $r['sha256']) ?></code></li>
-    <li>Applied: <?= !empty($r['applied']) ? 'yes' : 'no' ?></li>
+    <li>是否已安装：<?= !empty($r['applied']) ? '是' : '否' ?></li>
 </ul>
-<p>To apply on a machine you control, copy the artifact and run <code>php bin/console update:apply</code> after verifying the hash yourself.</p>
-<p><a href="/account">Back to account</a></p>
+<p>要在你控制的服务器安装更新，请复制更新包，人工核对哈希后运行 <code>php bin/console update:apply</code>。</p>
+<p><a href="/account">返回客户中心</a></p>

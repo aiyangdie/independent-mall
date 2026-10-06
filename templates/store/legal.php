@@ -2,16 +2,16 @@
 ob_start();
 $kind = (string) ($kind ?? '');
 $copy = [
-    'refunds' => 'Physical goods follow the cooling-off and quality rules that apply to the merchant. Digital goods may have narrower refunds only where the listing said so before pay and the law allows it. Fake payments in this Community demo create no real money to refund. This page does not override mandatory consumer law. Longer draft: docs/legal/refunds.md.',
-    'prohibited' => 'Do not list illegal goods, infringing copies, cheats, unauthorized bots, malware, third-party account trading, traffic or ranking manipulation, or unofficial virtual currency the merchant is not licensed to sell. Keyword holds in the shop do not replace the merchant’s legal duty. Longer draft: docs/legal/prohibited-goods.md.',
-    'disclaimer' => 'The merchant remains responsible for goods, qualifications, taxes, and consumer protection. This Community Edition software is offered without a warranty of uninterrupted operation. Nothing here excludes liability the law forbids excluding. Longer draft: docs/legal/disclaimer.md.',
-][$kind] ?? 'Unknown legal page.';
+    'refunds' => '实体商品遵循适用于商家的冷静期与质量规则。数字商品仅在上架前已说明且法律允许的范围内适用更窄的退款安排。本社区版演示中的 Fake 支付不会产生真实可退款项。本页不取代强制性消费者保护法。更长草案见 docs/legal/refunds.md。',
+    'prohibited' => '请勿上架非法商品、侵权复制品、外挂、未授权机器人、恶意软件、第三方账号交易、刷量刷榜，或商家无权销售的虚拟货币。店铺关键词拦截不能替代商家的法定义务。更长草案见 docs/legal/prohibited-goods.md。',
+    'disclaimer' => '商家对商品、资质、税务与消费者保护承担责任。本社区版软件不保证不间断运行。法律禁止排除的责任，本页不作排除。更长草案见 docs/legal/disclaimer.md。',
+][$kind] ?? '未知法律页面。';
 ?>
 <section class="narrow">
-    <h1><?= $e($title ?? 'Legal') ?></h1>
-    <p class="notice" role="note"><strong>Draft only.</strong> Counsel has not reviewed this text. Copyright holder TBD.</p>
+    <h1><?= $e($title ?? '法律信息') ?></h1>
+    <p class="notice" role="note"><strong>仅为草案。</strong>未经律师审核。版权主体待定。</p>
     <p><?= $e($copy) ?></p>
-    <p><a href="/">Back to catalog</a> · <a href="/legal/refunds">Refunds</a> · <a href="/legal/prohibited">Prohibited goods</a> · <a href="/legal/disclaimer">Disclaimer</a></p>
+    <p><a href="/">返回目录</a> · <a href="/legal/refunds">退款说明</a> · <a href="/legal/prohibited">禁售商品</a> · <a href="/legal/disclaimer">免责声明</a></p>
 </section>
 <?php
 $content = ob_get_clean();

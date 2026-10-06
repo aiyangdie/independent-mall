@@ -65,22 +65,22 @@ final class Site
         $method = $request->method();
         try {
             return match (true) {
-                $method === 'GET' && $path === '/' => $this->page('home', ['title' => 'Independent Mall']),
-                $method === 'GET' && $path === '/editions' => $this->page('editions', ['title' => 'Editions']),
-                $method === 'GET' && $path === '/pricing' => $this->page('pricing', ['title' => 'Pricing']),
-                $method === 'GET' && $path === '/changelog' => $this->page('changelog', ['title' => 'Changelog']),
-                $method === 'GET' && $path === '/docs' => $this->page('docs', ['title' => 'Documentation']),
-                $method === 'GET' && $path === '/contact' => $this->page('contact', ['title' => 'Contact']),
-                $method === 'GET' && $path === '/legal/terms' => $this->page('legal', ['title' => 'Terms', 'kind' => 'terms']),
-                $method === 'GET' && $path === '/legal/privacy' => $this->page('legal', ['title' => 'Privacy', 'kind' => 'privacy']),
-                $method === 'GET' && $path === '/legal/aup' => $this->page('legal', ['title' => 'Acceptable use', 'kind' => 'aup']),
-                $method === 'GET' && $path === '/legal/refunds' => $this->page('legal', ['title' => 'Refunds', 'kind' => 'refunds']),
-                $method === 'GET' && $path === '/legal/prohibited' => $this->page('legal', ['title' => 'Prohibited goods', 'kind' => 'prohibited']),
-                $method === 'GET' && $path === '/legal/disclaimer' => $this->page('legal', ['title' => 'Disclaimer', 'kind' => 'disclaimer']),
+                $method === 'GET' && $path === '/' => $this->page('home', ['title' => '独立商城']),
+                $method === 'GET' && $path === '/editions' => $this->page('editions', ['title' => '版本对比']),
+                $method === 'GET' && $path === '/pricing' => $this->page('pricing', ['title' => '产品价格']),
+                $method === 'GET' && $path === '/changelog' => $this->page('changelog', ['title' => '更新日志']),
+                $method === 'GET' && $path === '/docs' => $this->page('docs', ['title' => '产品文档']),
+                $method === 'GET' && $path === '/contact' => $this->page('contact', ['title' => '联系我们']),
+                $method === 'GET' && $path === '/legal/terms' => $this->page('legal', ['title' => '服务条款', 'kind' => 'terms']),
+                $method === 'GET' && $path === '/legal/privacy' => $this->page('legal', ['title' => '隐私政策', 'kind' => 'privacy']),
+                $method === 'GET' && $path === '/legal/aup' => $this->page('legal', ['title' => '可接受使用政策', 'kind' => 'aup']),
+                $method === 'GET' && $path === '/legal/refunds' => $this->page('legal', ['title' => '退款政策', 'kind' => 'refunds']),
+                $method === 'GET' && $path === '/legal/prohibited' => $this->page('legal', ['title' => '禁售商品', 'kind' => 'prohibited']),
+                $method === 'GET' && $path === '/legal/disclaimer' => $this->page('legal', ['title' => '免责声明', 'kind' => 'disclaimer']),
                 $method === 'GET' && $path === '/updates.json' => Response::json($this->hub->updates()),
-                $method === 'GET' && $path === '/register' => $this->page('register', ['title' => 'Register', 'error' => '']),
+                $method === 'GET' && $path === '/register' => $this->page('register', ['title' => '注册', 'error' => '']),
                 $method === 'POST' && $path === '/register' => $this->postRegister($request),
-                $method === 'GET' && $path === '/login' => $this->page('login', ['title' => 'Sign in', 'error' => '']),
+                $method === 'GET' && $path === '/login' => $this->page('login', ['title' => '登录', 'error' => '']),
                 $method === 'POST' && $path === '/login' => $this->postLogin($request),
                 $method === 'POST' && $path === '/logout' => $this->logout($request),
                 $method === 'GET' && $path === '/account' => $this->account(),
@@ -97,22 +97,22 @@ final class Site
                 $method === 'POST' && $path === '/account/download/revoke' => $this->revokeDownload($request),
                 $method === 'GET' && $path === '/account/license.json' => $this->downloadLicenseJson($request),
                 $method === 'GET' && $path === '/account/license-public.pem' => $this->downloadLicensePublicPem(),
-                default => $this->page('not-found', ['title' => 'Not found'], 404),
+                default => $this->page('not-found', ['title' => '页面不存在'], 404),
             };
         } catch (\Throwable $e) {
-            return $this->page('error', ['title' => 'Error', 'message' => $e->getMessage()], 400);
+            return $this->page('error', ['title' => '发生错误', 'message' => $e->getMessage()], 400);
         }
     }
 
     private function postRegister(Request $request): Response
     {
         if (!$this->csrf->assert($request)) {
-            return $this->page('register', ['title' => 'Register', 'error' => 'CSRF check failed.'], 400);
+            return $this->page('register', ['title' => '注册', 'error' => '表单安全校验失败，请刷新后重试。'], 400);
         }
         try {
             $id = $this->hub->register($request->post('email'), $request->post('password'));
         } catch (\Throwable $e) {
-            return $this->page('register', ['title' => 'Register', 'error' => $e->getMessage()], 400);
+            return $this->page('register', ['title' => '注册', 'error' => $e->getMessage()], 400);
         }
         $_SESSION['www_user'] = $id;
         return Response::redirect('/account');
@@ -121,12 +121,12 @@ final class Site
     private function postLogin(Request $request): Response
     {
         if (!$this->csrf->assert($request)) {
-            return $this->page('login', ['title' => 'Sign in', 'error' => 'CSRF check failed.'], 400);
+            return $this->page('login', ['title' => '登录', 'error' => '表单安全校验失败，请刷新后重试。'], 400);
         }
         try {
             $id = $this->hub->login($request->post('email'), $request->post('password'));
         } catch (\Throwable $e) {
-            return $this->page('login', ['title' => 'Sign in', 'error' => $e->getMessage()], 400);
+            return $this->page('login', ['title' => '登录', 'error' => $e->getMessage()], 400);
         }
         $_SESSION['www_user'] = $id;
         return Response::redirect('/account');
@@ -135,7 +135,7 @@ final class Site
     private function logout(Request $request): Response
     {
         if (!$this->csrf->assert($request)) {
-            return Response::html('CSRF', 400);
+            return Response::html('表单安全校验失败', 400);
         }
         unset($_SESSION['www_user']);
         return Response::redirect('/');
@@ -158,7 +158,7 @@ final class Site
             $files[$id] = $this->hub->downloadToken($uid, $id);
         }
         return $this->page('account', [
-            'title' => 'Customer center',
+            'title' => '客户中心',
             'orders' => $this->hub->orders($uid),
             'issuer_orders' => $this->hub->issuerOrdersForAccount($uid),
             'issuer_customer_id' => $this->hub->issuerCustomerIdForAccount($uid),
@@ -179,7 +179,7 @@ final class Site
             return Response::redirect('/login');
         }
         return $this->page('updates', [
-            'title' => 'Check updates',
+            'title' => '检查更新',
             'report' => $this->hub->inspectUpdates($uid),
         ]);
     }
@@ -188,13 +188,13 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $bought = $this->hub->fakeBuyNotice($uid);
-        $_SESSION['www_flash'] = 'Fake payment recorded. Product '
+        $_SESSION['www_flash'] = '演示购买已记录。产品 '
             . $bought['product_code'] . '@' . $bought['product_version']
-            . ' customer ' . $bought['customer_id']
-            . ' issuer order ' . $bought['issuer_order_id']
-            . '. License ' . $bought['license_id']
-            . ' token (shown once): ' . $bought['token']
-            . ' nonce (shown once): ' . $bought['nonce'];
+            . '，客户 ' . $bought['customer_id']
+            . '，授权订单 ' . $bought['issuer_order_id']
+            . '。授权编号 ' . $bought['license_id']
+            . '，授权令牌（仅显示一次）：' . $bought['token']
+            . '，激活随机码（仅显示一次）：' . $bought['nonce'];
         return Response::redirect('/account');
     }
 
@@ -208,7 +208,7 @@ final class Site
             $request->post('instance_id'),
             $request->post('nonce'),
         );
-        $_SESSION['www_flash'] = 'Instance bound.';
+        $_SESSION['www_flash'] = '实例绑定成功。';
         return Response::redirect('/account');
     }
 
@@ -216,7 +216,7 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $next = $this->hub->unbind($uid, $request->post('license_id'), $request->post('token'));
-        $_SESSION['www_flash'] = 'Instance unbound. Next activation nonce (shown once): ' . $next;
+        $_SESSION['www_flash'] = '实例已解绑。下次激活随机码（仅显示一次）：' . $next;
         return Response::redirect('/account');
     }
 
@@ -224,7 +224,7 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $this->hub->revoke($uid, $request->post('license_id'), $request->post('token'));
-        $_SESSION['www_flash'] = 'License marked revoked. Commercial modules stay off; Community shops keep selling.';
+        $_SESSION['www_flash'] = '授权已吊销。商业模块将保持停用，社区版商城仍可正常销售。';
         return Response::redirect('/account');
     }
 
@@ -236,10 +236,10 @@ final class Site
             $days = 365;
         }
         $result = $this->hub->fakeRenew($uid, $request->post('license_id'), $request->post('token'), $days);
-        $_SESSION['www_flash'] = 'Fake renewal recorded. Issuer order '
+        $_SESSION['www_flash'] = '演示续费已记录。授权订单 '
             . $result['issuer_order_id']
-            . ' customer ' . $result['customer_id']
-            . '. New expiry: ' . $result['expires_at'];
+            . '，客户 ' . $result['customer_id']
+            . '。新到期时间：' . $result['expires_at'];
         return Response::redirect('/account');
     }
 
@@ -247,7 +247,7 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $this->hub->openTicket($uid, $request->post('title'), $request->post('body'));
-        $_SESSION['www_flash'] = 'Ticket opened.';
+        $_SESSION['www_flash'] = '工单已提交。';
         return Response::redirect('/account');
     }
 
@@ -255,7 +255,7 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $this->hub->answerTicket($uid, (int) $request->post('ticket_id'), $request->post('reply'));
-        $_SESSION['www_flash'] = 'Demo staff reply saved (Fake operator).';
+        $_SESSION['www_flash'] = '演示客服回复已保存。';
         return Response::redirect('/account');
     }
 
@@ -263,7 +263,7 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $this->hub->closeTicket($uid, (int) $request->post('ticket_id'));
-        $_SESSION['www_flash'] = 'Ticket closed.';
+        $_SESSION['www_flash'] = '工单已关闭。';
         return Response::redirect('/account');
     }
 
@@ -271,7 +271,7 @@ final class Site
     {
         $uid = $this->userId();
         if ($uid < 1) {
-            return Response::html('Sign in required.', 401);
+            return Response::html('请先登录。', 401);
         }
         $path = $this->hub->resolveDownload($uid, $request->query('token'));
         $body = (string) file_get_contents($path);
@@ -287,7 +287,7 @@ final class Site
     {
         $uid = $this->userId();
         if ($uid < 1) {
-            return Response::html('Sign in required.', 401);
+            return Response::html('请先登录。', 401);
         }
         $licenseId = $request->query('id');
         $body = $this->hub->licenseDocumentJson($uid, $licenseId);
@@ -304,7 +304,7 @@ final class Site
     {
         $uid = $this->userId();
         if ($uid < 1) {
-            return Response::html('Sign in required.', 401);
+            return Response::html('请先登录。', 401);
         }
         return new Response($this->hub->publicPem(), 200, [
             'Content-Type' => 'application/x-pem-file; charset=UTF-8',
@@ -318,18 +318,18 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $this->hub->revokeDownloadToken($uid, $request->post('jti'));
-        $_SESSION['www_flash'] = 'Download link revoked.';
+        $_SESSION['www_flash'] = '下载链接已撤销。';
         return Response::redirect('/account');
     }
 
     private function requireUser(Request $request): int
     {
         if (!$this->csrf->assert($request)) {
-            throw new \DomainException('CSRF check failed.');
+            throw new \DomainException('表单安全校验失败，请刷新后重试。');
         }
         $uid = $this->userId();
         if ($uid < 1) {
-            throw new \DomainException('Sign in required.');
+            throw new \DomainException('请先登录。');
         }
         return $uid;
     }

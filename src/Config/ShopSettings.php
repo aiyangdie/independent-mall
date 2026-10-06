@@ -30,7 +30,7 @@ final class ShopSettings
      */
     public function all(): array
     {
-        $out = ['shop_name' => 'Independent Mall', 'support_email' => ''];
+        $out = ['shop_name' => '独立商城', 'support_email' => ''];
         $rows = $this->pdo->query('SELECT key, value FROM system_settings')->fetchAll() ?: [];
         foreach ($rows as $row) {
             if (in_array($row['key'], self::KEYS, true)) {

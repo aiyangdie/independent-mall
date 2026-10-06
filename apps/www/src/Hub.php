@@ -308,7 +308,7 @@ final class Hub
         $this->assertOwns($userId, $licenseId, $token);
         $before = $this->store->status($licenseId);
         if (!empty($before['revoked'])) {
-            throw new \DomainException('License revoked.');
+            throw new \DomainException('授权已吊销。');
         }
         $baseTs = strtotime((string) $before['expires_at']);
         if ($baseTs === false) {
@@ -469,7 +469,7 @@ final class Hub
         $row = $this->requireTicket($userId, $ticketId);
         $status = (string) $row['status'];
         if ($status === 'closed') {
-            throw new \DomainException('Ticket is already closed.');
+            throw new \DomainException('工单已关闭。');
         }
         if ($status !== 'open' && $status !== 'answered') {
             throw new \DomainException('Ticket status is not acceptable.');
@@ -593,7 +593,7 @@ final class Hub
         $stmt->execute(['j' => $jti]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!is_array($row) || (int) $row['user_id'] !== $userId) {
-            throw new \DomainException('Download token does not belong to this account.');
+            throw new \DomainException('下载令牌不属于当前账户。');
         }
         $this->pdo->prepare('UPDATE download_tokens SET revoked = 1 WHERE jti = :j')->execute(['j' => $jti]);
         $this->log($userId, 'download_token_revoke', ['jti' => $jti]);
@@ -624,7 +624,7 @@ final class Hub
         $expect = hash_hmac('sha256', $userId . '|' . $fileId . '|' . $exp . '|' . $jti, $this->hmacKey);
         if (!hash_equals($expect, $sig) || !isset(self::FILES[$fileId])) {
             $this->auditDownload($userId, $fileId, false);
-            throw new \DomainException('Download token refused.');
+            throw new \DomainException('下载令牌已被拒绝。');
         }
         $stmt = $this->pdo->prepare('SELECT * FROM download_tokens WHERE jti = :j');
         $stmt->execute(['j' => $jti]);
@@ -639,7 +639,7 @@ final class Hub
             || (int) $row['use_count'] >= (int) $row['max_uses']
         ) {
             $this->auditDownload($userId, $fileId, false);
-            throw new \DomainException('Download token refused.');
+            throw new \DomainException('下载令牌已被拒绝。');
         }
         $path = $this->filesDir . '/' . self::FILES[$fileId];
         $realBase = realpath($this->filesDir);
@@ -657,7 +657,7 @@ final class Hub
         $bump->execute(['j' => $jti, 'n' => time()]);
         if ($bump->rowCount() !== 1) {
             $this->auditDownload($userId, $fileId, false);
-            throw new \DomainException('Download token refused.');
+            throw new \DomainException('下载令牌已被拒绝。');
         }
         $this->auditDownload($userId, $fileId, true);
         $this->log($userId, 'download_ok', ['file_id' => $fileId, 'jti' => $jti]);

@@ -155,7 +155,7 @@ final class UpdateTest extends TestCase
         $kernel = new Kernel(Config::load($community), $pdo, $auth, new Csrf(), new Renderer($repo . '/templates'), new Router());
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
-        $this->assertStringContainsString('lawful trade', $home->body());
+        $this->assertStringContainsString('正规商品', $home->body());
         $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
         $this->assertFalse($health['license_required']);
         $this->assertFalse($health['network_required']);

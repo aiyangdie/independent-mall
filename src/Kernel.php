@@ -74,9 +74,9 @@ final class Kernel
     public function page(string $view, array $data = [], int $status = 200): Response
     {
         try {
-            $data['shop_name'] = (new ShopSettings($this->pdo))->get('shop_name', 'Independent Mall');
+            $data['shop_name'] = (new ShopSettings($this->pdo))->get('shop_name', '独立商城');
         } catch (\Throwable) {
-            $data['shop_name'] = $data['shop_name'] ?? 'Independent Mall';
+            $data['shop_name'] = $data['shop_name'] ?? '独立商城';
         }
         return Response::html($this->view->render($view, $data), $status);
     }
@@ -108,12 +108,12 @@ final class Kernel
         $this->router->add('GET', '#^/legal/(refunds|prohibited|disclaimer)$#', function (Request $request, array $m) {
             $kind = $m[1];
             $titles = [
-                'refunds' => 'Refunds',
-                'prohibited' => 'Prohibited goods',
-                'disclaimer' => 'Disclaimer',
+                'refunds' => '退款说明',
+                'prohibited' => '禁售商品',
+                'disclaimer' => '免责声明',
             ];
             return $this->page('store/legal', [
-                'title' => $titles[$kind] ?? 'Legal',
+                'title' => $titles[$kind] ?? '法律信息',
                 'kind' => $kind,
             ]);
         });
@@ -121,11 +121,11 @@ final class Kernel
             $installer = new Installer($this->config->root());
             if ($installer->isInstalled()) {
                 return $this->page('install/locked', [
-                    'title' => 'Already installed',
+                    'title' => '系统已安装',
                 ], 409);
             }
             return $this->page('install/form', [
-                'title' => 'Install Community Edition',
+                'title' => '安装社区版',
                 'csrf' => $this->csrf->field(),
                 'error' => '',
                 'checks' => \IndependentMall\Install\Environment::checks($this->config->root()),
@@ -134,11 +134,11 @@ final class Kernel
         $this->router->add('POST', '/install', function (Request $request) {
             $installer = new Installer($this->config->root());
             if ($installer->isInstalled()) {
-                return $this->page('install/locked', ['title' => 'Already installed'], 409);
+                return $this->page('install/locked', ['title' => '系统已安装'], 409);
             }
             if (!$this->csrf->assert($request)) {
                 return $this->page('install/form', [
-                    'title' => 'Install Community Edition',
+                    'title' => '安装社区版',
                     'csrf' => $this->csrf->field(),
                     'error' => 'The form expired. Try again.',
                     'checks' => \IndependentMall\Install\Environment::checks($this->config->root()),
@@ -149,14 +149,14 @@ final class Kernel
                     'admin_email' => $request->post('admin_email'),
                     'admin_username' => $request->post('admin_username', 'admin'),
                     'admin_password' => $request->post('admin_password'),
-                    'shop_name' => $request->post('shop_name', 'Independent Mall'),
+                    'shop_name' => $request->post('shop_name', '独立商城'),
                     'app_url' => $request->post('app_url', $this->config->get('APP_URL')),
                     'database_url' => $request->post('database_url', $this->config->get('DATABASE_URL')),
                     'seed' => $request->post('seed'),
                 ]);
             } catch (\Throwable $e) {
                 return $this->page('install/form', [
-                    'title' => 'Install Community Edition',
+                    'title' => '安装社区版',
                     'csrf' => $this->csrf->field(),
                     'error' => $e->getMessage(),
                     'checks' => \IndependentMall\Install\Environment::checks($this->config->root()),
@@ -169,7 +169,7 @@ final class Kernel
                 return Response::redirect('/admin');
             }
             return $this->page('admin/login', [
-                'title' => 'Admin sign in',
+                'title' => '管理员登录',
                 'csrf' => $this->csrf->field(),
                 'error' => '',
             ]);
@@ -177,7 +177,7 @@ final class Kernel
         $this->router->add('POST', '/admin/login', function (Request $request) {
             if (!$this->csrf->assert($request)) {
                 return $this->page('admin/login', [
-                    'title' => 'Admin sign in',
+                    'title' => '管理员登录',
                     'csrf' => $this->csrf->field(),
                     'error' => 'The form expired. Try again.',
                 ], 400);
@@ -190,7 +190,7 @@ final class Kernel
             }
             if (!$ok) {
                 return $this->page('admin/login', [
-                    'title' => 'Admin sign in',
+                    'title' => '管理员登录',
                     'csrf' => $this->csrf->field(),
                     'error' => 'Sign-in failed or this account is not an administrator.',
                 ], 401);
@@ -210,7 +210,7 @@ final class Kernel
             }
             $user = $this->auth->user();
             return $this->page('admin/dashboard', [
-                'title' => 'Dashboard',
+                'title' => '运营概览',
                 'user' => $user,
                 'csrf' => $this->csrf->field(),
                 'health' => $this->health(),
@@ -348,7 +348,7 @@ final class Kernel
             $rows[] = $host->snapshot($module);
         }
         return $this->page('admin/modules', [
-            'title' => 'Modules',
+            'title' => '商业模块与授权',
             'modules' => $rows,
             'faults' => $host->faults(),
             'csrf' => $this->csrf->field(),
@@ -406,7 +406,7 @@ final class Kernel
         $this->router->add('GET', '/', function () {
             $catalog = $this->catalog();
             return $this->page('store/home', [
-                'title' => 'Independent Mall',
+                'title' => '独立商城',
                 'products' => $catalog->storefrontProducts(),
                 'categories' => $catalog->categories(),
                 'notice' => $this->modules()->storefrontNotice(),
@@ -415,7 +415,7 @@ final class Kernel
         $this->router->add('GET', '/search', function (Request $request) {
             $q = $request->query('q');
             return $this->page('store/search', [
-                'title' => 'Search',
+                'title' => '搜索',
                 'q' => $q,
                 'products' => $this->catalog()->search($q),
                 'categories' => $this->catalog()->categories(),
@@ -425,7 +425,7 @@ final class Kernel
             $catalog = $this->catalog();
             $category = $catalog->categoryBySlug($m[1]);
             if ($category === null) {
-                return $this->page('store/not-found', ['title' => 'Not found'], 404);
+                return $this->page('store/not-found', ['title' => '未找到'], 404);
             }
             return $this->page('store/category', [
                 'title' => $category['name'],
@@ -438,7 +438,7 @@ final class Kernel
             $catalog = $this->catalog();
             $product = $catalog->productBySlug($m[1]);
             if ($product === null || $product['status'] !== 'active') {
-                return $this->page('store/not-found', ['title' => 'Not found'], 404);
+                return $this->page('store/not-found', ['title' => '未找到'], 404);
             }
             return $this->page('store/product', [
                 'title' => $product['name'],
@@ -450,12 +450,12 @@ final class Kernel
         });
         $this->router->add('POST', '#^/p/([a-z0-9-]+)/report$#', function (Request $request, array $m) {
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $catalog = $this->catalog();
             $product = $catalog->productBySlug($m[1]);
             if ($product === null) {
-                return $this->page('store/not-found', ['title' => 'Not found'], 404);
+                return $this->page('store/not-found', ['title' => '未找到'], 404);
             }
             $catalog->report((int) $product['id'], $request->post('reason', 'other'), $request->post('detail'));
             return Response::redirect('/p/' . $m[1]);
@@ -463,7 +463,7 @@ final class Kernel
         $this->router->add('GET', '#^/media/([a-f0-9]{32}\.(jpg|png|webp))$#', function (Request $request, array $m) {
             $path = $this->images()->pathFor($m[1]);
             if ($path === null) {
-                return $this->page('store/not-found', ['title' => 'Not found'], 404);
+                return $this->page('store/not-found', ['title' => '未找到'], 404);
             }
             $mime = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'][pathinfo($path, PATHINFO_EXTENSION)] ?? 'application/octet-stream';
             return Response::file($path, $mime);
@@ -473,7 +473,7 @@ final class Kernel
                 return $deny;
             }
             return $this->page('admin/products', [
-                'title' => 'Products',
+                'title' => '商品管理',
                 'products' => $this->catalog()->adminProducts(),
                 'categories' => $this->catalog()->categories(false),
                 'csrf' => $this->csrf->field(),
@@ -486,7 +486,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $actor = $this->auth->user();
             try {
@@ -505,7 +505,7 @@ final class Kernel
                 );
             } catch (\Throwable $e) {
                 return $this->page('admin/products', [
-                    'title' => 'Products',
+                    'title' => '商品管理',
                     'products' => $this->catalog()->adminProducts(),
                     'categories' => $this->catalog()->categories(false),
                     'csrf' => $this->csrf->field(),
@@ -520,7 +520,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $id = (int) $m[1];
             $actor = $this->auth->user()['id'] ?? null;
@@ -542,7 +542,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->images()->store((int) $m[1], $request->file('image'), $this->auth->user()['id'] ?? null);
@@ -556,11 +556,11 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $variants = $this->catalog()->variants((int) $m[1]);
             if ($variants === []) {
-                return Response::html('No variant', 422);
+                return Response::html('商品没有可用规格', 422);
             }
             $delta = $request->intPost('delta');
             $ref = $request->post('reference', 'manual:' . bin2hex(random_bytes(4)));
@@ -576,7 +576,7 @@ final class Kernel
                 return $deny;
             }
             return $this->page('admin/categories', [
-                'title' => 'Categories',
+                'title' => '商品分类',
                 'categories' => $this->catalog()->categories(false),
                 'csrf' => $this->csrf->field(),
                 'error' => '',
@@ -588,7 +588,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->catalog()->createCategory($request->post('name'), $request->post('slug'));
@@ -602,7 +602,7 @@ final class Kernel
                 return $deny;
             }
             return $this->page('admin/rules', [
-                'title' => 'Prohibited listing rules',
+                'title' => '禁售规则',
                 'rules' => $this->catalog()->prohibitedRules(),
                 'user' => $this->auth->user(),
             ]);
@@ -616,7 +616,7 @@ final class Kernel
                 $rows = (new AuditLogger($this->pdo))->recent(100, $prefix);
             } catch (\InvalidArgumentException $e) {
                 return $this->page('admin/audit', [
-                    'title' => 'Audit log',
+                    'title' => '审计日志',
                     'rows' => [],
                     'action_filter' => $prefix,
                     'error' => $e->getMessage(),
@@ -624,7 +624,7 @@ final class Kernel
                 ], 422);
             }
             return $this->page('admin/audit', [
-                'title' => 'Audit log',
+                'title' => '审计日志',
                 'rows' => $rows,
                 'action_filter' => $prefix,
                 'error' => '',
@@ -636,7 +636,7 @@ final class Kernel
                 return $deny;
             }
             return $this->page('admin/customers', [
-                'title' => 'Customers',
+                'title' => '顾客管理',
                 'accounts' => $this->customers()->directory(),
                 'csrf' => $this->csrf->field(),
                 'error' => '',
@@ -648,7 +648,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->customers()->setStatus((int) $m[1], $m[2], (int) ($this->auth->user()['id'] ?? 0));
@@ -662,7 +662,7 @@ final class Kernel
                 return $deny;
             }
             return $this->page('admin/skus', [
-                'title' => 'SKUs and inventory',
+                'title' => '商品规格与库存',
                 'skus' => $this->catalog()->skuDirectory(),
                 'csrf' => $this->csrf->field(),
                 'user' => $this->auth->user(),
@@ -673,7 +673,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $ref = $request->post('reference', 'sku:' . $m[1] . ':' . bin2hex(random_bytes(4)));
             try {
@@ -688,7 +688,7 @@ final class Kernel
                 return $deny;
             }
             return $this->page('admin/settings', [
-                'title' => 'Shop settings',
+                'title' => '店铺设置',
                 'settings' => (new ShopSettings($this->pdo))->all(),
                 'csrf' => $this->csrf->field(),
                 'error' => '',
@@ -700,7 +700,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $settings = new ShopSettings($this->pdo, new AuditLogger($this->pdo));
             try {
@@ -708,7 +708,7 @@ final class Kernel
                 $settings->put('support_email', $request->post('support_email'), $this->auth->user()['id'] ?? null);
             } catch (\Throwable $e) {
                 return $this->page('admin/settings', [
-                    'title' => 'Shop settings',
+                    'title' => '店铺设置',
                     'settings' => $settings->all(),
                     'csrf' => $this->csrf->field(),
                     'error' => $e->getMessage(),
@@ -728,7 +728,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             if (trim($request->post('public_pem')) !== '') {
                 return $this->adminModulesPage(
@@ -755,7 +755,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $fp = LicenseDocuments::installTrustKey(
@@ -780,7 +780,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $instanceId = $request->post('instance_id');
@@ -808,7 +808,7 @@ final class Kernel
                 return $deny;
             }
             if (!$this->csrf->assert($request)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $actor = $this->auth->user()['id'] ?? null;
             try {

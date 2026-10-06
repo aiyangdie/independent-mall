@@ -59,7 +59,7 @@ final class Installer
         $email = mb_strtolower(trim($input['admin_email'] ?? ''));
         $username = trim($input['admin_username'] ?? 'admin');
         $password = $input['admin_password'] ?? '';
-        $shop = trim($input['shop_name'] ?? 'Independent Mall');
+        $shop = trim($input['shop_name'] ?? '独立商城');
         $appUrl = trim($input['app_url'] ?? 'http://127.0.0.1:8090');
         $databaseUrl = trim($input['database_url'] ?? 'sqlite:///%ROOT%/var/data/app.sqlite');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -91,7 +91,7 @@ final class Installer
         }
         (new AdminProvisioner($pdo, $hasher))->create($email, $username === '' ? 'admin' : $username, $password);
         $settings = new ShopSettings($pdo, new AuditLogger($pdo));
-        $settings->put('shop_name', $shop === '' ? 'Independent Mall' : $shop, null);
+        $settings->put('shop_name', $shop === '' ? '独立商城' : $shop, null);
         if (($input['seed'] ?? '') === '1') {
             (new DemoSeeder($pdo))->seedIfEmpty();
         }

@@ -1,11 +1,12 @@
 <?php
 use IndependentMall\Catalog\Money;
+use IndependentMall\Support\Chinese;
 ob_start();
 ?>
 <article>
-    <p><a href="/orders">All orders</a></p>
+    <p><a href="/orders">全部订单</a></p>
     <h1><?= $e($order['public_id']) ?></h1>
-    <p>Status: <?= $e($order['status']) ?> · <?= $e(Money::format((int) $order['payable_minor'], (string) $order['currency'])) ?></p>
+    <p>状态：<?= $e(Chinese::label($order['status'])) ?> · <?= $e(Money::format((int) $order['payable_minor'], (string) $order['currency'])) ?></p>
     <pre><?= $e($order['address_snapshot']) ?></pre>
     <ul>
         <?php foreach ($items as $item): ?>
@@ -16,23 +17,23 @@ ob_start();
         <form method="post" action="/orders/<?= $e($order['id']) ?>/pay-fake">
             <?= $csrf ?>
             <input type="hidden" name="outcome" value="succeeded">
-            <button type="submit">Pay with fake gateway</button>
+            <button type="submit">使用演示支付通道付款</button>
         </form>
-        <form method="post" action="/orders/<?= $e($order['id']) ?>/cancel"><?= $csrf ?><button>Cancel order</button></form>
+        <form method="post" action="/orders/<?= $e($order['id']) ?>/cancel"><?= $csrf ?><button>取消订单</button></form>
     <?php endif; ?>
     <?php if (in_array($order['status'], ['paid', 'completed'], true)): ?>
         <form method="post" action="/orders/<?= $e($order['id']) ?>/refund">
             <?= $csrf ?>
             <input type="hidden" name="amount_minor" value="<?= $e($order['payable_minor']) ?>">
-            <label>Reason <input name="reason" value="requested"></label>
-            <button type="submit">Request refund</button>
+            <label>原因 <input name="reason" value="requested"></label>
+            <button type="submit">申请退款</button>
         </form>
     <?php endif; ?>
     <?php if (!empty($flash_tokens)): ?>
-        <p>Download links (shown once):</p>
+        <p>下载链接（仅显示一次）：</p>
         <ul>
             <?php foreach ($flash_tokens as $tok): ?>
-                <li><a href="/deliveries/<?= $e($tok) ?>">Download delivery</a></li>
+                <li><a href="/deliveries/<?= $e($tok) ?>">下载交付物</a></li>
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>

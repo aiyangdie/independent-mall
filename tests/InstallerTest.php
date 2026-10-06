@@ -132,7 +132,7 @@ final class InstallerTest extends TestCase
         $this->assertSame('/install', $home->header('Location'));
         $form = $kernel->handle(new Request('GET', '/install', [], [], [], []));
         $this->assertSame(200, $form->status());
-        $this->assertStringContainsString('Install Community Edition', $form->body());
+        $this->assertStringContainsString('安装社区版', $form->body());
         $health = $kernel->handle(new Request('GET', '/healthz', [], [], [], []));
         $this->assertSame(200, $health->status());
         $payload = json_decode($health->body(), true);
@@ -150,7 +150,7 @@ final class InstallerTest extends TestCase
         $kernel = new Kernel(Config::load($this->tmp), $pdo, $auth, new Csrf(), new Renderer($this->root . '/templates'), new Router());
         $page = $kernel->handle(new Request('GET', '/install', [], [], [], []));
         $this->assertSame(409, $page->status());
-        $this->assertStringContainsString('Already installed', $page->body());
+        $this->assertStringContainsString('系统已安装', $page->body());
     }
 
     public function testEmptyTreeInstallServesHealthAndCatalog(): void
@@ -185,9 +185,9 @@ final class InstallerTest extends TestCase
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
         $this->assertStringContainsString('Empty Tree Goods', $home->body());
-        $this->assertStringContainsString('lawful trade', $home->body());
-        $this->assertStringContainsString('Skip to content', $home->body());
-        $this->assertStringNotContainsString('Sample commercial notice', $home->body());
+        $this->assertStringContainsString('正规商品', $home->body());
+        $this->assertStringContainsString('跳到主要内容', $home->body());
+        $this->assertStringNotContainsString('示例商业公告', $home->body());
         $locked = $kernel->handle(new Request('GET', '/install', [], [], [], []));
         $this->assertSame(409, $locked->status());
     }

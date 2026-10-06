@@ -4,10 +4,10 @@ $q = $q ?? '';
 ob_start();
 ?>
 <section>
-    <h1>Search</h1>
-    <p>Query: <?= $e($q) ?></p>
+    <h1>搜索</h1>
+    <p>关键词：<?= $e($q) ?></p>
     <?php if ($products === []): ?>
-        <p>No published listings matched.</p>
+        <p>没有匹配的已上架商品。</p>
     <?php else: ?>
         <ul>
             <?php foreach ($products as $p): ?>

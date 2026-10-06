@@ -3,9 +3,9 @@ use IndependentMall\Catalog\Money;
 ob_start();
 ?>
 <section>
-    <h1>Cart</h1>
+    <h1>购物车</h1>
     <?php if ($lines === []): ?>
-        <p>Your cart is empty.</p>
+        <p>购物车是空的。</p>
     <?php else: ?>
         <ul>
             <?php foreach ($lines as $line): ?>
@@ -14,7 +14,7 @@ ob_start();
                 </li>
             <?php endforeach; ?>
         </ul>
-        <p><a href="/checkout">Checkout</a></p>
+        <p><a href="/checkout">去结算</a></p>
     <?php endif; ?>
 </section>
 <?php

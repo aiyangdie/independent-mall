@@ -133,12 +133,12 @@ if ($st !== 302 || !preg_match('#Location:\s*/orders/\d+/result#i', $hdr)) {
     exit(1);
 }
 [$st, , $result] = fetch($base . '/orders/' . $orderId . '/result', $cookieHeader);
-if ($st !== 200 || !str_contains($result, 'Payment result')) {
+if ($st !== 200 || !str_contains($result, '支付结果')) {
     fwrite(STDERR, "payment result page failed $st\n");
     exit(1);
 }
 [$st, , $paid] = fetch($base . '/orders/' . $orderId, $cookieHeader);
-if ($st !== 200 || !str_contains($paid, 'completed')) {
+if ($st !== 200 || !str_contains($paid, '已完成')) {
     fwrite(STDERR, "paid order missing completed status\n");
     exit(1);
 }

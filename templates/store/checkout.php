@@ -3,7 +3,7 @@ use IndependentMall\Catalog\Money;
 ob_start();
 ?>
 <section>
-    <h1>Checkout</h1>
+    <h1>结算</h1>
     <?php if (!empty($error)): ?><p class="alert" role="alert"><?= $e($error) ?></p><?php endif; ?>
     <ul>
         <?php foreach ($lines as $line): ?>
@@ -14,16 +14,16 @@ ob_start();
     </ul>
     <form method="post" action="/checkout">
         <?= $csrf ?>
-        <label>Idempotency key <input name="idempotency_key" required value="<?= $e(bin2hex(random_bytes(8))) ?>"></label>
-        <label>Shipping address
+        <label>幂等键 <input name="idempotency_key" required value="<?= $e(bin2hex(random_bytes(8))) ?>"></label>
+        <label>收货地址
             <select name="address_id">
-                <option value="">None (digital or service only)</option>
+                <option value="">无（仅数字商品或服务）</option>
                 <?php foreach ($addresses as $a): ?>
                     <option value="<?= $e($a['id']) ?>"><?= $e($a['recipient']) ?> — <?= $e($a['line1']) ?></option>
                 <?php endforeach; ?>
             </select>
         </label>
-        <button type="submit">Place order</button>
+        <button type="submit">提交订单</button>
     </form>
 </section>
 <?php

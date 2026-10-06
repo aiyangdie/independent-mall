@@ -34,16 +34,16 @@ final class ShopFront
     private function routes(): void
     {
         $r = $this->app->router;
-        $r->add('GET', '/register', fn () => $this->form('account/register', 'Create account'));
+        $r->add('GET', '/register', fn () => $this->form('account/register', '创建账户'));
         $r->add('POST', '/register', function (Request $req) {
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             if ($req->post('accept_terms') !== '1') {
                 return $this->form(
                     'account/register',
-                    'Create account',
-                    'Accept the draft terms and disclaimer before creating an account.',
+                    '创建账户',
+                    '请先勾选并接受条款草案与免责声明后再创建账户。',
                     422,
                 );
             }
@@ -51,7 +51,7 @@ final class ShopFront
                 $this->accounts()->register($req->post('email'), $req->post('username'), $req->post('password'));
                 $this->app->auth->login($req->post('email'), $req->post('password'), $req->ip());
             } catch (\Throwable $e) {
-                return $this->form('account/register', 'Create account', $e->getMessage(), 422);
+                return $this->form('account/register', '创建账户', $e->getMessage(), 422);
             }
             return Response::redirect('/account');
         });
@@ -59,14 +59,14 @@ final class ShopFront
             if ($this->app->auth->user()) {
                 return Response::redirect('/account');
             }
-            return $this->form('account/login', 'Sign in');
+            return $this->form('account/login', '登录');
         });
         $r->add('POST', '/login', function (Request $req) {
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             if (!$this->app->auth->login($req->post('identity'), $req->post('password'), $req->ip())) {
-                return $this->form('account/login', 'Sign in', 'Sign-in failed.', 401);
+                return $this->form('account/login', '登录', '登录失败。', 401);
             }
             return Response::redirect('/account');
         });
@@ -76,17 +76,17 @@ final class ShopFront
             }
             return Response::redirect('/');
         });
-        $r->add('GET', '/forgot', fn () => $this->form('account/forgot', 'Reset password'));
+        $r->add('GET', '/forgot', fn () => $this->form('account/forgot', '重置密码'));
         $r->add('POST', '/forgot', function (Request $req) {
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $this->accounts()->requestReset($req->post('email'));
-            return $this->form('account/forgot', 'Reset password', '', 200, 'If the account exists, a reset token was sent.');
+            return $this->form('account/forgot', '重置密码', '', 200, '若该账户存在，重置令牌已发送。');
         });
         $r->add('GET', '/reset', function (Request $req) {
             return $this->app->page('account/reset', [
-                'title' => 'Choose a new password',
+                'title' => '设置新密码',
                 'csrf' => $this->app->csrf->field(),
                 'error' => '',
                 'token' => $req->query('token'),
@@ -95,13 +95,13 @@ final class ShopFront
         });
         $r->add('POST', '/reset', function (Request $req) {
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->accounts()->completeReset($req->post('token'), $req->post('password'));
             } catch (\Throwable $e) {
                 return $this->app->page('account/reset', [
-                    'title' => 'Choose a new password',
+                    'title' => '设置新密码',
                     'csrf' => $this->app->csrf->field(),
                     'error' => $e->getMessage(),
                     'token' => $req->post('token'),
@@ -115,7 +115,7 @@ final class ShopFront
                 return $deny;
             }
             return $this->app->page('account/home', [
-                'title' => 'Account',
+                'title' => '我的账户',
                 'user' => $this->app->auth->user(),
                 'orders' => $this->checkout()->forUser($this->app->auth->user()['id']),
                 'csrf' => $this->app->csrf->field(),
@@ -126,7 +126,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->accounts()->changePassword($this->app->auth->user()['id'], $req->post('current'), $req->post('next'));
@@ -141,7 +141,7 @@ final class ShopFront
                 return $deny;
             }
             return $this->app->page('account/addresses', [
-                'title' => 'Addresses',
+                'title' => '收货地址',
                 'addresses' => $this->addresses()->list($this->app->auth->user()['id']),
                 'csrf' => $this->app->csrf->field(),
                 'error' => '',
@@ -153,7 +153,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->addresses()->create($this->app->auth->user()['id'], [
@@ -176,7 +176,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $this->addresses()->delete($this->app->auth->user()['id'], (int) $m[1]);
             return Response::redirect('/account/addresses');
@@ -186,7 +186,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->cart()->add($this->app->auth->user()['id'], $req->intPost('variant_id'), max(1, $req->intPost('qty', 1)));
@@ -200,7 +200,7 @@ final class ShopFront
                 return $deny;
             }
             return $this->app->page('store/cart', [
-                'title' => 'Cart',
+                'title' => '购物车',
                 'lines' => $this->cart()->lines($this->app->auth->user()['id']),
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
@@ -212,7 +212,7 @@ final class ShopFront
             }
             $uid = $this->app->auth->user()['id'];
             return $this->app->page('store/checkout', [
-                'title' => 'Checkout',
+                'title' => '结账',
                 'lines' => $this->cart()->lines($uid),
                 'addresses' => $this->addresses()->list($uid),
                 'csrf' => $this->app->csrf->field(),
@@ -225,7 +225,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $uid = $this->app->auth->user()['id'];
             $addr = $req->post('address_id');
@@ -237,7 +237,7 @@ final class ShopFront
                 );
             } catch (\Throwable $e) {
                 return $this->app->page('store/checkout', [
-                    'title' => 'Checkout',
+                    'title' => '结账',
                     'lines' => $this->cart()->lines($uid),
                     'addresses' => $this->addresses()->list($uid),
                     'csrf' => $this->app->csrf->field(),
@@ -252,7 +252,7 @@ final class ShopFront
                 return $deny;
             }
             return $this->app->page('account/orders', [
-                'title' => 'Orders',
+                'title' => '我的订单',
                 'orders' => $this->checkout()->forUser($this->app->auth->user()['id']),
                 'user' => $this->app->auth->user(),
                 'csrf' => $this->app->csrf->field(),
@@ -265,12 +265,12 @@ final class ShopFront
             try {
                 $order = $this->checkout()->owned($this->app->auth->user()['id'], (int) $m[1]);
             } catch (DomainException) {
-                return $this->app->page('store/not-found', ['title' => 'Not found'], 404);
+                return $this->app->page('store/not-found', ['title' => '未找到'], 404);
             }
             $flash = $_SESSION['flash_delivery_tokens'] ?? [];
             unset($_SESSION['flash_delivery_tokens']);
             return $this->app->page('store/payment-result', [
-                'title' => 'Payment result',
+                'title' => '支付结果',
                 'order' => $order,
                 'payments' => $this->payments()->forOrder((int) $order['id']),
                 'flash_tokens' => $flash,
@@ -284,12 +284,12 @@ final class ShopFront
             try {
                 $order = $this->checkout()->owned($this->app->auth->user()['id'], (int) $m[1]);
             } catch (DomainException) {
-                return Response::html('Not found', 404);
+                return Response::html('未找到', 404);
             }
             $flash = $_SESSION['flash_delivery_tokens'] ?? [];
             unset($_SESSION['flash_delivery_tokens']);
             return $this->app->page('account/order', [
-                'title' => 'Order ' . $order['public_id'],
+                'title' => '订单 ' . $order['public_id'],
                 'order' => $order,
                 'items' => $this->checkout()->items((int) $order['id']),
                 'deliveries' => $this->digital()->forOrder((int) $order['id']),
@@ -303,7 +303,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $this->checkout()->cancel($this->app->auth->user()['id'], (int) $m[1]);
@@ -317,7 +317,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $order = $this->checkout()->owned($this->app->auth->user()['id'], (int) $m[1]);
@@ -341,7 +341,7 @@ final class ShopFront
                 return $deny;
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             try {
                 $order = $this->checkout()->owned($this->app->auth->user()['id'], (int) $m[1]);
@@ -374,7 +374,7 @@ final class ShopFront
                 return $deny;
             }
             return $this->app->page('admin/orders', [
-                'title' => 'Orders',
+                'title' => '订单管理',
                 'orders' => $this->checkout()->all(),
                 'user' => $this->app->auth->user(),
             ]);
@@ -386,10 +386,10 @@ final class ShopFront
             try {
                 $order = $this->checkout()->byId((int) $m[1]);
             } catch (DomainException) {
-                return $this->app->page('store/not-found', ['title' => 'Not found'], 404);
+                return $this->app->page('store/not-found', ['title' => '页面不存在'], 404);
             }
             return $this->app->page('admin/order', [
-                'title' => 'Order ' . $order['public_id'],
+                'title' => '订单 ' . $order['public_id'],
                 'order' => $order,
                 'items' => $this->checkout()->items((int) $order['id']),
                 'payments' => $this->payments()->forOrder((int) $order['id']),
@@ -401,7 +401,7 @@ final class ShopFront
                 return $deny;
             }
             return $this->app->page('admin/payments', [
-                'title' => 'Payments',
+                'title' => '支付记录',
                 'payments' => $this->payments()->all(),
                 'user' => $this->app->auth->user(),
             ]);
@@ -411,7 +411,7 @@ final class ShopFront
                 return $deny;
             }
             return $this->app->page('admin/refunds', [
-                'title' => 'Refunds',
+                'title' => '退款管理',
                 'refunds' => $this->refunds()->all(),
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
@@ -422,7 +422,7 @@ final class ShopFront
                 return Response::redirect('/admin/login');
             }
             if (!$this->app->csrf->assert($req)) {
-                return Response::html('Invalid form', 400);
+                return Response::html('表单无效', 400);
             }
             $this->refunds()->decide((int) $m[1], $m[2], $this->app->auth->user()['id'] ?? null);
             return Response::redirect('/admin/refunds');

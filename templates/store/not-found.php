@@ -2,9 +2,9 @@
 ob_start();
 ?>
 <section>
-    <h1>Page not found</h1>
-    <p>That listing or page is not available.</p>
-    <p><a href="/">Return to the catalog</a></p>
+    <h1>页面不存在</h1>
+    <p>该商品或页面不可用。</p>
+    <p><a href="/">返回商品目录</a></p>
 </section>
 <?php
 $content = ob_get_clean();

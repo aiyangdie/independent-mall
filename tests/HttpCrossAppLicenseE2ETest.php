@@ -39,7 +39,7 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
         $this->communityProc = $this->startServer($this->communityPort, $this->communityRoot . '/public');
         $this->wwwProc = $this->startServer($this->wwwPort, $this->wwwRoot . '/public');
         $this->waitFor($this->communityBase() . '/healthz', static fn (int $st, string $body): bool => $st === 200 && str_contains($body, '"edition":"community"'));
-        $this->waitFor($this->wwwBase() . '/', static fn (int $st, string $body): bool => $st === 200 && str_contains($body, 'Independent Mall'));
+        $this->waitFor($this->wwwBase() . '/', static fn (int $st, string $body): bool => $st === 200 && str_contains($body, '独立商城'));
     }
 
     protected function tearDown(): void
@@ -79,10 +79,10 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
 
         [$st, , $account] = $this->http('GET', $this->wwwBase() . '/account', $wwwCookies);
         $this->assertSame(200, $st);
-        $this->assertStringContainsString('fake_completed', $account);
+        $this->assertStringContainsString('演示订单完成', $account);
         $this->assertStringContainsString('/account/license.json?id=', $account);
-        $this->assertMatchesRegularExpression('/License (lic_[a-f0-9]+)/', $account);
-        preg_match('/License (lic_[a-f0-9]+)/', $account, $lm);
+        $this->assertMatchesRegularExpression('/授权编号 (lic_[a-f0-9]+)/u', $account);
+        preg_match('/授权编号 (lic_[a-f0-9]+)/u', $account, $lm);
         $licenseId = $lm[1];
 
         [$st, $hdr, $licenseJson] = $this->http('GET', $this->wwwBase() . '/account/license.json?id=' . rawurlencode($licenseId), $wwwCookies);
@@ -168,8 +168,8 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
 
         [$st, , $home] = $this->http('GET', $this->communityBase() . '/', $adminCookies);
         $this->assertSame(200, $st);
-        $this->assertStringContainsString('Sample commercial notice', $home);
-        $this->assertStringContainsString('lawful trade', $home);
+        $this->assertStringContainsString('示例商业公告', $home);
+        $this->assertStringContainsString('正规商品', $home);
 
         [$st, , $healthBody] = $this->http('GET', $this->communityBase() . '/healthz', $adminCookies);
         $health = json_decode($healthBody, true);
@@ -248,7 +248,7 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
         $this->assertSame(302, $st);
         [$st, , $paid] = $this->http('GET', $this->communityBase() . '/orders/' . $om[1], $shopCookies);
         $this->assertSame(200, $st);
-        $this->assertStringContainsString('completed', $paid);
+        $this->assertStringContainsString('已完成', $paid);
     }
 
     private function communityBase(): string

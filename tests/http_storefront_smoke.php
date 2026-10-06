@@ -39,7 +39,7 @@ if ($st !== 200 || ($json['edition'] ?? '') !== 'community' || ($json['license_r
     exit(1);
 }
 [$st, $home] = fetchStore($base . '/', $cookie);
-if ($st !== 200 || !str_contains($home, 'lawful trade') || !str_contains($home, '/c/physical-goods')) {
+if ($st !== 200 || !str_contains($home, '正规商品') || !str_contains($home, '/c/physical-goods')) {
     fwrite(STDERR, "home failed $st\n");
     exit(1);
 }
@@ -69,7 +69,7 @@ if ($st !== 409 && $st !== 200) {
     exit(1);
 }
 [$st, $legal] = fetchStore($base . '/legal/prohibited', $cookie);
-if ($st !== 200 || !str_contains($legal, 'account trading') || !str_contains($legal, 'Draft only')) {
+if ($st !== 200 || !str_contains($legal, '账号交易') || !str_contains($legal, '草案')) {
     fwrite(STDERR, "legal page failed $st\n");
     exit(1);
 }

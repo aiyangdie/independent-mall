@@ -37,7 +37,7 @@ function fetch(string $url, string &$cookieHeader, array $opts = []): array
 }
 
 [$st, , $home] = fetch($base . '/', $cookieHeader);
-if ($st !== 200 || !str_contains($home, 'lawful trade')) {
+if ($st !== 200 || !str_contains($home, '正规商品')) {
     fwrite(STDERR, "home failed status=$st\n");
     exit(1);
 }

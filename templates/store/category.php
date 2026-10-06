@@ -3,9 +3,9 @@ $products = $products ?? [];
 ob_start();
 ?>
 <section>
-    <h1><?= $e($category['name'] ?? 'Category') ?></h1>
+    <h1><?= $e($category['name'] ?? '分类') ?></h1>
     <?php if ($products === []): ?>
-        <p>No published listings in this category.</p>
+        <p>该分类下暂无已上架商品。</p>
     <?php else: ?>
         <ul>
             <?php foreach ($products as $p): ?>
