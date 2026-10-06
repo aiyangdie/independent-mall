@@ -146,6 +146,9 @@ final class OfficialSiteTest extends TestCase
         file_put_contents($dir . '/pub.pem', $this->publicPem);
         $gate = new FileLicenseGate($dir . '/license.json', $dir . '/pub.pem', new FrozenClock(time()));
         $this->assertTrue($gate->allows(['storefront_notice']));
+        $boundPage = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('bound to', $boundPage->body());
+        $this->assertStringContainsString('shop-demo-1', $boundPage->body());
 
         $this->site->handle(new Request('POST', '/account/unbind', [], [
             '_csrf' => $token,
@@ -153,6 +156,7 @@ final class OfficialSiteTest extends TestCase
             'token' => $secret,
         ], [], []));
         $afterUnbind = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('unbound', $afterUnbind->body());
         preg_match('/Next activation nonce \(shown once\): ([a-f0-9]+)/', $afterUnbind->body(), $n2);
         $this->assertNotEmpty($n2);
         $this->site->handle(new Request('POST', '/account/activate', [], [

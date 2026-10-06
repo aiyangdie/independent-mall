@@ -179,7 +179,16 @@ final class Hub
     {
         $stmt = $this->pdo->prepare('SELECT license_id, document, created_at FROM account_licenses WHERE user_id = :u');
         $stmt->execute(['u' => $userId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($rows as &$row) {
+            $env = json_decode((string) $row['document'], true);
+            $payload = is_array($env) && isset($env['payload']) && is_array($env['payload']) ? $env['payload'] : [];
+            $instance = (string) ($payload['instance_id'] ?? '');
+            $row['instance_id'] = $instance;
+            $row['bound'] = $instance !== '';
+        }
+        unset($row);
+        return $rows;
     }
 
     /**
@@ -200,6 +209,17 @@ final class Hub
     {
         $this->assertOwns($userId, $licenseId, $token);
         $nonce = $this->store->unbind($licenseId);
+        $stmt = $this->pdo->prepare('SELECT document FROM account_licenses WHERE user_id = :u AND license_id = :l');
+        $stmt->execute(['u' => $userId, 'l' => $licenseId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($row)) {
+            $env = json_decode((string) $row['document'], true);
+            $payload = is_array($env) && isset($env['payload']) && is_array($env['payload']) ? $env['payload'] : [];
+            $payload['instance_id'] = '';
+            $doc = Signer::sign($payload, $this->privatePem);
+            $this->pdo->prepare('UPDATE account_licenses SET document = :d WHERE user_id = :u AND license_id = :l')
+                ->execute(['d' => json_encode($doc, JSON_UNESCAPED_SLASHES), 'u' => $userId, 'l' => $licenseId]);
+        }
         $this->log($userId, 'unbind', ['license_id' => $licenseId]);
         return $nonce;
     }

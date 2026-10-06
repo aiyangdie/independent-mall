@@ -24,7 +24,9 @@ $flash = $e((string) ($data['flash'] ?? ''));
 <h2>Licenses</h2>
 <ul>
 <?php foreach ($data['licenses'] as $row): ?>
-    <li><code><?= $e((string) $row['license_id']) ?></code></li>
+    <li><code><?= $e((string) $row['license_id']) ?></code>
+        <?php if (!empty($row['bound'])): ?> bound to <code><?= $e((string) $row['instance_id']) ?></code>
+        <?php else: ?> unbound<?php endif; ?></li>
 <?php endforeach; ?>
 </ul>
 <form method="post" action="/account/activate">
