@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 final class LayoutCssTest extends TestCase
 {
-    public function testShopCssHasNarrowAndFocusRules(): void
+    public function testShopCssHasNarrowFocusAndContrastAnchors(): void
     {
         $css = (string) file_get_contents(dirname(__DIR__) . '/public/assets/app.css');
         $this->assertStringContainsString(':focus-visible', $css);
@@ -18,6 +18,25 @@ final class LayoutCssTest extends TestCase
         $this->assertStringContainsString('font-size: 1rem', $css);
         $this->assertStringContainsString('max-width: 100%', $css);
         $this->assertStringContainsString('.table-wrap { overflow-x: auto', $css);
+        $this->assertStringContainsString('prefers-reduced-motion', $css);
+        $this->assertStringContainsString('--muted: #3f3b34', $css);
+        $this->assertStringContainsString('--accent: #0a4a3d', $css);
+        $this->assertStringContainsString('outline: 3px solid', $css);
+        $this->assertStringContainsString('button {', $css);
+        $this->assertStringContainsString('color: #fffdf8', $css);
+        $this->assertStringContainsString('min-height: 2.5rem', $css);
+    }
+
+    public function testOfficialSiteCssHasFocusReducedMotionAndCallouts(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__) . '/apps/www/public/assets/site.css');
+        $this->assertStringContainsString(':focus-visible', $css);
+        $this->assertStringContainsString('.skip:focus', $css);
+        $this->assertStringContainsString('prefers-reduced-motion', $css);
+        $this->assertStringContainsString('.callout', $css);
+        $this->assertStringContainsString('--focus: #0a4a3d', $css);
+        $this->assertStringContainsString('min-height: 2.5rem', $css);
+        $this->assertStringContainsString('@media (max-width: 40rem)', $css);
     }
 
     public function testTemplatesWithTablesUseOverflowWrap(): void

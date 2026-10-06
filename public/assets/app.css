@@ -1,10 +1,11 @@
 :root {
   --bg: #f4f1ea;
   --ink: #1b1b18;
-  --muted: #5c584f;
-  --accent: #0f5c4c;
+  --muted: #3f3b34;
+  --accent: #0a4a3d;
   --card: #fffdf8;
-  --danger: #8a1f1f;
+  --danger: #7a1515;
+  --focus: #0a4a3d;
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -37,7 +38,7 @@ img { max-width: 100%; height: auto; }
   footer.bar { flex-direction: column; align-items: flex-start; }
 }
 main { width: min(960px, calc(100% - 2rem)); margin: 2rem auto; flex: 1; }
-.notice { background: #e7f2ee; border: 1px solid #0f5c4c; padding: 0.75rem 1rem; }
+.notice { background: #e7f2ee; border: 1px solid var(--accent); padding: 0.75rem 1rem; color: var(--ink); }
 .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
 .card, .narrow { background: var(--card); padding: 1.25rem; border: 1px solid #d9d3c7; }
 .narrow { max-width: 28rem; }
@@ -50,10 +51,21 @@ table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; background: 
 th, td { border: 1px solid #d9d3c7; padding: 0.5rem; vertical-align: top; text-align: left; }
 td form { display: inline-block; margin: 0.15rem 0.15rem 0 0; }
 .alert { color: var(--danger); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-button { min-height: 2.5rem; padding: 0.4rem 0.75rem; }
-a:focus, button:focus, input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+button {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--accent);
+  color: #fffdf8;
+  border: 1px solid var(--accent);
+  cursor: pointer;
+}
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+a:focus, button:focus, input:focus, select:focus, textarea:focus { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
 dt { color: var(--muted); font-size: 0.85rem; }
 dd { margin: 0.2rem 0 0; font-weight: 600; }
 footer.bar { flex-wrap: wrap; }

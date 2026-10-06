@@ -56,6 +56,12 @@ final class OfficialSiteTest extends TestCase
             $this->assertStringContainsString('Counsel has not reviewed', $res->body());
             $this->assertStringContainsString('Skip to content', $res->body());
         }
+        $pricing = $this->site->handle(new Request('GET', '/pricing', [], [], [], []));
+        $this->assertStringContainsString('Fake payments only', $pricing->body());
+        $this->assertStringContainsString('Not reviewed by counsel', $pricing->body());
+        $this->assertStringContainsString('callout-fake', $pricing->body());
+        $this->assertStringContainsString('callout-legal', $pricing->body());
+        $this->assertStringContainsString('/legal/disclaimer', $pricing->body());
         $editions = $this->site->handle(new Request('GET', '/editions', [], [], [], []));
         $this->assertStringContainsString('table-wrap', $editions->body());
         $refunds = $this->site->handle(new Request('GET', '/legal/refunds', [], [], [], []));
