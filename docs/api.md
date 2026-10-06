@@ -6,6 +6,8 @@ All state-changing POST bodies require `_csrf`. JSON health check is unauthentic
 |--------|------|-----|
 | GET | `/healthz` | public |
 | GET | `/` | public catalog |
+| GET | `/search?q=` | public search of published listings |
+| GET | `/c/{slug}` | public category |
 | GET | `/p/{slug}` | public product |
 | POST | `/p/{slug}/report` | public |
 | GET/POST | `/register` `/login` `/forgot` `/reset` | public |
@@ -13,7 +15,7 @@ All state-changing POST bodies require `_csrf`. JSON health check is unauthentic
 | GET | `/account` `/account/addresses` `/orders` `/orders/{id}` `/cart` `/checkout` | customer |
 | POST | `/cart/add` `/checkout` `/orders/{id}/pay-fake` `/orders/{id}/cancel` `/orders/{id}/refund` | customer |
 | GET | `/deliveries/{token}` | bearer of hashed token |
-| GET/POST | `/admin/login` `/admin/products` `/admin/orders` | administrator |
+| GET/POST | `/admin/login` `/admin/products` `/admin/skus` `/admin/categories` `/admin/orders` `/admin/customers` `/admin/rules` `/admin/settings` `/admin/audit` | administrator |
 
 Fake payment notify is invoked from `/orders/{id}/pay-fake` using server-side amount and HMAC. Shoppers cannot supply a new total.
 

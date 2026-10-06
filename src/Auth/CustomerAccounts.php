@@ -143,4 +143,50 @@ final class CustomerAccounts
         $this->auth->bumpEpoch($userId);
         $this->audit->record($userId, 'user.locked', 'user', (string) $userId);
     }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function directory(): array
+    {
+        return $this->pdo->query(
+            "SELECT u.id, u.email, u.username, u.status, u.created_at,
+                    GROUP_CONCAT(r.name) AS roles
+             FROM users u
+             LEFT JOIN user_roles ur ON ur.user_id = u.id
+             LEFT JOIN roles r ON r.id = ur.role_id
+             WHERE u.deleted_at IS NULL
+             GROUP BY u.id
+             ORDER BY u.id"
+        )->fetchAll() ?: [];
+    }
+
+    public function setStatus(int $userId, string $status, int $actorId): void
+    {
+        if (!in_array($status, ['active', 'locked'], true)) {
+            throw new DomainException('Unsupported account status.');
+        }
+        if ($userId === $actorId) {
+            throw new DomainException('You cannot change your own account status here.');
+        }
+        if ($this->hasAdminAccess($userId)) {
+            throw new DomainException('Administrator accounts cannot be locked from this screen.');
+        }
+        $this->pdo->prepare('UPDATE users SET status = :s, updated_at = :t WHERE id = :id AND deleted_at IS NULL')
+            ->execute(['s' => $status, 't' => gmdate('c'), 'id' => $userId]);
+        $this->auth->bumpEpoch($userId);
+        $this->audit->record($actorId, 'user.status', 'user', (string) $userId, ['status' => $status]);
+    }
+
+    private function hasAdminAccess(int $userId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT 1 FROM user_roles ur
+             JOIN role_permissions rp ON rp.role_id = ur.role_id
+             JOIN permissions p ON p.id = rp.permission_id
+             WHERE ur.user_id = :u AND p.name = 'admin.access' LIMIT 1"
+        );
+        $stmt->execute(['u' => $userId]);
+        return (bool) $stmt->fetch();
+    }
 }

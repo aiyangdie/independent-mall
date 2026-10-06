@@ -7,7 +7,10 @@ namespace IndependentMall;
 use IndependentMall\Auth\PasswordHasher;
 use IndependentMall\Auth\RateLimiter;
 use IndependentMall\Auth\SessionAuth;
+use IndependentMall\Auth\CustomerAccounts;
 use IndependentMall\Config\Config;
+use IndependentMall\Config\ShopSettings;
+use IndependentMall\Mail\NullMailer;
 use IndependentMall\Database\ConnectionFactory;
 use IndependentMall\Database\Migrator;
 use IndependentMall\Catalog\ImageStore;
@@ -59,6 +62,15 @@ final class Kernel
         return $kernel;
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function page(string $view, array $data = [], int $status = 200): Response
+    {
+        $data['shop_name'] = (new ShopSettings($this->pdo))->get('shop_name', 'Independent Mall');
+        return Response::html($this->view->render($view, $data), $status);
+    }
+
     private function registerRoutes(): void
     {
         $this->router->add('GET', '/healthz', fn () => Response::json($this->health()));
@@ -66,19 +78,19 @@ final class Kernel
             if ($this->auth->can('admin.access')) {
                 return Response::redirect('/admin');
             }
-            return Response::html($this->view->render('admin/login', [
+            return $this->page('admin/login', [
                 'title' => 'Admin sign in',
                 'csrf' => $this->csrf->field(),
                 'error' => '',
-            ]));
+            ]);
         });
         $this->router->add('POST', '/admin/login', function (Request $request) {
             if (!$this->csrf->assert($request)) {
-                return Response::html($this->view->render('admin/login', [
+                return $this->page('admin/login', [
                     'title' => 'Admin sign in',
                     'csrf' => $this->csrf->field(),
                     'error' => 'The form expired. Try again.',
-                ]), 400);
+                ], 400);
             }
             $ok = $this->auth->login($request->post('identity'), $request->post('password'), $request->ip());
             if ($ok && !$this->auth->can('admin.access')) {
@@ -87,11 +99,11 @@ final class Kernel
                 $ok = false;
             }
             if (!$ok) {
-                return Response::html($this->view->render('admin/login', [
+                return $this->page('admin/login', [
                     'title' => 'Admin sign in',
                     'csrf' => $this->csrf->field(),
                     'error' => 'Sign-in failed or this account is not an administrator.',
-                ]), 401);
+                ], 401);
             }
             return Response::redirect('/admin');
         });
@@ -107,12 +119,12 @@ final class Kernel
                 return Response::redirect('/admin/login');
             }
             $user = $this->auth->user();
-            return Response::html($this->view->render('admin/dashboard', [
+            return $this->page('admin/dashboard', [
                 'title' => 'Dashboard',
                 'user' => $user,
                 'csrf' => $this->csrf->field(),
                 'health' => $this->health(),
-            ]));
+            ]);
         });
         $this->registerCatalogRoutes();
         $this->registerCommerceRoutes();
@@ -158,6 +170,17 @@ final class Kernel
         );
     }
 
+    private function customers(): CustomerAccounts
+    {
+        return new CustomerAccounts(
+            $this->pdo,
+            new PasswordHasher(),
+            new NullMailer(),
+            new AuditLogger($this->pdo),
+            $this->auth,
+        );
+    }
+
     private function catalog(): ProductCatalog
     {
         return new ProductCatalog($this->pdo, new ProhibitedGoodsPolicy($this->pdo), new AuditLogger($this->pdo));
@@ -179,11 +202,34 @@ final class Kernel
     private function registerCatalogRoutes(): void
     {
         $this->router->add('GET', '/', function () {
-            $items = $this->catalog()->storefrontProducts();
-            return Response::html($this->view->render('store/home', [
+            $catalog = $this->catalog();
+            return $this->page('store/home', [
                 'title' => 'Independent Mall',
-                'products' => $items,
-            ]));
+                'products' => $catalog->storefrontProducts(),
+                'categories' => $catalog->categories(),
+            ]);
+        });
+        $this->router->add('GET', '/search', function (Request $request) {
+            $q = $request->query('q');
+            return $this->page('store/search', [
+                'title' => 'Search',
+                'q' => $q,
+                'products' => $this->catalog()->search($q),
+                'categories' => $this->catalog()->categories(),
+            ]);
+        });
+        $this->router->add('GET', '#^/c/([a-z0-9-]+)$#', function (Request $request, array $m) {
+            $catalog = $this->catalog();
+            $category = $catalog->categoryBySlug($m[1]);
+            if ($category === null) {
+                return Response::html('Not found', 404);
+            }
+            return $this->page('store/category', [
+                'title' => $category['name'],
+                'category' => $category,
+                'products' => $catalog->productsInCategory((int) $category['id']),
+                'categories' => $catalog->categories(),
+            ]);
         });
         $this->router->add('GET', '#^/p/([a-z0-9-]+)$#', function (Request $request, array $m) {
             $catalog = $this->catalog();
@@ -191,13 +237,13 @@ final class Kernel
             if ($product === null || $product['status'] !== 'active') {
                 return Response::html('Not found', 404);
             }
-            return Response::html($this->view->render('store/product', [
+            return $this->page('store/product', [
                 'title' => $product['name'],
                 'product' => $product,
                 'variants' => $catalog->variants((int) $product['id']),
                 'images' => $catalog->images((int) $product['id']),
                 'csrf' => $this->csrf->field(),
-            ]));
+            ]);
         });
         $this->router->add('POST', '#^/p/([a-z0-9-]+)/report$#', function (Request $request, array $m) {
             if (!$this->csrf->assert($request)) {
@@ -223,14 +269,14 @@ final class Kernel
             if ($deny = $this->requireAdmin()) {
                 return $deny;
             }
-            return Response::html($this->view->render('admin/products', [
+            return $this->page('admin/products', [
                 'title' => 'Products',
                 'products' => $this->catalog()->adminProducts(),
                 'categories' => $this->catalog()->categories(false),
                 'csrf' => $this->csrf->field(),
                 'error' => '',
                 'user' => $this->auth->user(),
-            ]));
+            ]);
         });
         $this->router->add('POST', '/admin/products', function (Request $request) {
             if ($deny = $this->requireAdmin()) {
@@ -255,14 +301,14 @@ final class Kernel
                     $actor['id'] ?? null,
                 );
             } catch (\Throwable $e) {
-                return Response::html($this->view->render('admin/products', [
+                return $this->page('admin/products', [
                     'title' => 'Products',
                     'products' => $this->catalog()->adminProducts(),
                     'categories' => $this->catalog()->categories(false),
                     'csrf' => $this->csrf->field(),
                     'error' => $e->getMessage(),
                     'user' => $actor,
-                ]), 422);
+                ], 422);
             }
             return Response::redirect('/admin/products');
         });
@@ -321,6 +367,139 @@ final class Kernel
                 return Response::html($e->getMessage(), 422);
             }
             return Response::redirect('/admin/products');
+        });
+        $this->router->add('GET', '/admin/categories', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            return $this->page('admin/categories', [
+                'title' => 'Categories',
+                'categories' => $this->catalog()->categories(false),
+                'csrf' => $this->csrf->field(),
+                'error' => '',
+                'user' => $this->auth->user(),
+            ]);
+        });
+        $this->router->add('POST', '/admin/categories', function (Request $request) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            try {
+                $this->catalog()->createCategory($request->post('name'), $request->post('slug'));
+            } catch (\Throwable $e) {
+                return Response::html($e->getMessage(), 422);
+            }
+            return Response::redirect('/admin/categories');
+        });
+        $this->router->add('GET', '/admin/rules', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            return $this->page('admin/rules', [
+                'title' => 'Prohibited listing rules',
+                'rules' => $this->catalog()->prohibitedRules(),
+                'user' => $this->auth->user(),
+            ]);
+        });
+        $this->router->add('GET', '/admin/audit', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            $rows = $this->pdo->query('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100')->fetchAll() ?: [];
+            return $this->page('admin/audit', [
+                'title' => 'Audit log',
+                'rows' => $rows,
+                'user' => $this->auth->user(),
+            ]);
+        });
+        $this->router->add('GET', '/admin/customers', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            return $this->page('admin/customers', [
+                'title' => 'Customers',
+                'accounts' => $this->customers()->directory(),
+                'csrf' => $this->csrf->field(),
+                'error' => '',
+                'user' => $this->auth->user(),
+            ]);
+        });
+        $this->router->add('POST', '#^/admin/customers/(\d+)/(active|locked)$#', function (Request $request, array $m) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            try {
+                $this->customers()->setStatus((int) $m[1], $m[2], (int) ($this->auth->user()['id'] ?? 0));
+            } catch (\Throwable $e) {
+                return Response::html($e->getMessage(), 422);
+            }
+            return Response::redirect('/admin/customers');
+        });
+        $this->router->add('GET', '/admin/skus', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            return $this->page('admin/skus', [
+                'title' => 'SKUs and inventory',
+                'skus' => $this->catalog()->skuDirectory(),
+                'csrf' => $this->csrf->field(),
+                'user' => $this->auth->user(),
+            ]);
+        });
+        $this->router->add('POST', '#^/admin/skus/(\d+)/stock$#', function (Request $request, array $m) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $ref = $request->post('reference', 'sku:' . $m[1] . ':' . bin2hex(random_bytes(4)));
+            try {
+                $this->catalog()->applyMovement((int) $m[1], $request->intPost('delta'), 0, 'adjust', $ref);
+            } catch (\Throwable $e) {
+                return Response::html($e->getMessage(), 422);
+            }
+            return Response::redirect('/admin/skus');
+        });
+        $this->router->add('GET', '/admin/settings', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            return $this->page('admin/settings', [
+                'title' => 'Shop settings',
+                'settings' => (new ShopSettings($this->pdo))->all(),
+                'csrf' => $this->csrf->field(),
+                'error' => '',
+                'user' => $this->auth->user(),
+            ]);
+        });
+        $this->router->add('POST', '/admin/settings', function (Request $request) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $settings = new ShopSettings($this->pdo, new AuditLogger($this->pdo));
+            try {
+                $settings->put('shop_name', $request->post('shop_name'), $this->auth->user()['id'] ?? null);
+                $settings->put('support_email', $request->post('support_email'), $this->auth->user()['id'] ?? null);
+            } catch (\Throwable $e) {
+                return $this->page('admin/settings', [
+                    'title' => 'Shop settings',
+                    'settings' => $settings->all(),
+                    'csrf' => $this->csrf->field(),
+                    'error' => $e->getMessage(),
+                    'user' => $this->auth->user(),
+                ], 422);
+            }
+            return Response::redirect('/admin/settings');
         });
     }
 

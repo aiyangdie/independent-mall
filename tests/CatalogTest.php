@@ -132,4 +132,29 @@ final class CatalogTest extends TestCase
         $detail = $kernel->handle(new Request('GET', '/p/hidden-draft', [], [], [], []));
         $this->assertSame(404, $detail->status());
     }
+
+    public function testSearchAndCategoryHideDrafts(): void
+    {
+        $this->catalog->createDraft(1, 'physical', 'Hidden draft bag', 'hidden-draft-bag', 'secret', '', 'HD-2', 'Std', 100, 0, 1);
+        $ids = $this->catalog->createDraft(1, 'physical', 'Cotton tote', 'cotton-tote-2', 'Reusable bag', '', 'TOTE-2', 'Std', 1990, 1, 1);
+        $this->catalog->publish($ids['product_id'], 1);
+        $hits = $this->catalog->search('tote');
+        $this->assertCount(1, $hits);
+        $this->assertSame('Cotton tote', $hits[0]['name']);
+        $this->assertSame([], $this->catalog->search('Hidden draft'));
+        $cat = $this->catalog->categoryBySlug('physical-goods');
+        $this->assertNotNull($cat);
+        $inCat = $this->catalog->productsInCategory((int) $cat['id']);
+        $this->assertCount(1, $inCat);
+        $config = Config::load($this->root);
+        $auth = new SessionAuth($this->pdo, new PasswordHasher(), new RateLimiter($this->pdo), new AuditLogger($this->pdo), 'k');
+        $kernel = new Kernel($config, $this->pdo, $auth, new Csrf(), new Renderer($this->root . '/templates'), new Router());
+        $search = $kernel->handle(new Request('GET', '/search', ['q' => 'tote'], [], [], []));
+        $this->assertSame(200, $search->status());
+        $this->assertStringContainsString('Cotton tote', $search->body());
+        $this->assertStringNotContainsString('Hidden draft bag', $search->body());
+        $page = $kernel->handle(new Request('GET', '/c/physical-goods', [], [], [], []));
+        $this->assertSame(200, $page->status());
+        $this->assertStringContainsString('Cotton tote', $page->body());
+    }
 }

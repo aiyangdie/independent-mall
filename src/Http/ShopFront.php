@@ -77,13 +77,13 @@ final class ShopFront
             return $this->form('account/forgot', 'Reset password', '', 200, 'If the account exists, a reset token was sent.');
         });
         $r->add('GET', '/reset', function (Request $req) {
-            return Response::html($this->app->view->render('account/reset', [
+            return $this->app->page('account/reset', [
                 'title' => 'Choose a new password',
                 'csrf' => $this->app->csrf->field(),
                 'error' => '',
                 'token' => $req->query('token'),
                 'user' => $this->app->auth->user(),
-            ]));
+            ]);
         });
         $r->add('POST', '/reset', function (Request $req) {
             if (!$this->app->csrf->assert($req)) {
@@ -92,13 +92,13 @@ final class ShopFront
             try {
                 $this->accounts()->completeReset($req->post('token'), $req->post('password'));
             } catch (\Throwable $e) {
-                return Response::html($this->app->view->render('account/reset', [
+                return $this->app->page('account/reset', [
                     'title' => 'Choose a new password',
                     'csrf' => $this->app->csrf->field(),
                     'error' => $e->getMessage(),
                     'token' => $req->post('token'),
                     'user' => $this->app->auth->user(),
-                ]), 422);
+                ], 422);
             }
             return Response::redirect('/login');
         });
@@ -106,12 +106,12 @@ final class ShopFront
             if ($deny = $this->needUser()) {
                 return $deny;
             }
-            return Response::html($this->app->view->render('account/home', [
+            return $this->app->page('account/home', [
                 'title' => 'Account',
                 'user' => $this->app->auth->user(),
                 'orders' => $this->checkout()->forUser($this->app->auth->user()['id']),
                 'csrf' => $this->app->csrf->field(),
-            ]));
+            ]);
         });
         $r->add('POST', '/account/password', function (Request $req) {
             if ($deny = $this->needUser()) {
@@ -132,13 +132,13 @@ final class ShopFront
             if ($deny = $this->needUser()) {
                 return $deny;
             }
-            return Response::html($this->app->view->render('account/addresses', [
+            return $this->app->page('account/addresses', [
                 'title' => 'Addresses',
                 'addresses' => $this->addresses()->list($this->app->auth->user()['id']),
                 'csrf' => $this->app->csrf->field(),
                 'error' => '',
                 'user' => $this->app->auth->user(),
-            ]));
+            ]);
         });
         $r->add('POST', '/account/addresses', function (Request $req) {
             if ($deny = $this->needUser()) {
@@ -191,26 +191,26 @@ final class ShopFront
             if ($deny = $this->needUser()) {
                 return $deny;
             }
-            return Response::html($this->app->view->render('store/cart', [
+            return $this->app->page('store/cart', [
                 'title' => 'Cart',
                 'lines' => $this->cart()->lines($this->app->auth->user()['id']),
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
-            ]));
+            ]);
         });
         $r->add('GET', '/checkout', function () {
             if ($deny = $this->needUser()) {
                 return $deny;
             }
             $uid = $this->app->auth->user()['id'];
-            return Response::html($this->app->view->render('store/checkout', [
+            return $this->app->page('store/checkout', [
                 'title' => 'Checkout',
                 'lines' => $this->cart()->lines($uid),
                 'addresses' => $this->addresses()->list($uid),
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
                 'error' => '',
-            ]));
+            ]);
         });
         $r->add('POST', '/checkout', function (Request $req) {
             if ($deny = $this->needUser()) {
@@ -228,14 +228,14 @@ final class ShopFront
                     $req->post('idempotency_key'),
                 );
             } catch (\Throwable $e) {
-                return Response::html($this->app->view->render('store/checkout', [
+                return $this->app->page('store/checkout', [
                     'title' => 'Checkout',
                     'lines' => $this->cart()->lines($uid),
                     'addresses' => $this->addresses()->list($uid),
                     'csrf' => $this->app->csrf->field(),
                     'user' => $this->app->auth->user(),
                     'error' => $e->getMessage(),
-                ]), 422);
+                ], 422);
             }
             return Response::redirect('/orders/' . $order['id']);
         });
@@ -243,12 +243,12 @@ final class ShopFront
             if ($deny = $this->needUser()) {
                 return $deny;
             }
-            return Response::html($this->app->view->render('account/orders', [
+            return $this->app->page('account/orders', [
                 'title' => 'Orders',
                 'orders' => $this->checkout()->forUser($this->app->auth->user()['id']),
                 'user' => $this->app->auth->user(),
                 'csrf' => $this->app->csrf->field(),
-            ]));
+            ]);
         });
         $r->add('GET', '#^/orders/(\d+)$#', function (Request $req, array $m) {
             if ($deny = $this->needUser()) {
@@ -261,7 +261,7 @@ final class ShopFront
             }
             $flash = $_SESSION['flash_delivery_tokens'] ?? [];
             unset($_SESSION['flash_delivery_tokens']);
-            return Response::html($this->app->view->render('account/order', [
+            return $this->app->page('account/order', [
                 'title' => 'Order ' . $order['public_id'],
                 'order' => $order,
                 'items' => $this->checkout()->items((int) $order['id']),
@@ -269,7 +269,7 @@ final class ShopFront
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
                 'flash_tokens' => $flash,
-            ]));
+            ]);
         });
         $r->add('POST', '#^/orders/(\d+)/cancel$#', function (Request $req, array $m) {
             if ($deny = $this->needUser()) {
@@ -346,13 +346,13 @@ final class ShopFront
             if (!$this->app->auth->can('order.manage') && !$this->app->auth->can('admin.access')) {
                 return Response::redirect('/admin/login');
             }
-            return Response::html($this->app->view->render('admin/orders', [
+            return $this->app->page('admin/orders', [
                 'title' => 'Orders',
                 'orders' => $this->checkout()->all(),
                 'refunds' => $this->refunds()->all(),
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
-            ]));
+            ]);
         });
         $r->add('POST', '#^/admin/refunds/(\d+)/(approved|rejected)$#', function (Request $req, array $m) {
             if (!$this->app->auth->can('admin.access')) {
@@ -368,13 +368,13 @@ final class ShopFront
 
     private function form(string $view, string $title, string $error = '', int $status = 200, string $notice = ''): Response
     {
-        return Response::html($this->app->view->render($view, [
+        return $this->app->page($view, [
             'title' => $title,
             'csrf' => $this->app->csrf->field(),
             'error' => $error,
             'notice' => $notice,
             'user' => $this->app->auth->user(),
-        ]), $status);
+        ], $status);
     }
 
     private function needUser(): ?Response

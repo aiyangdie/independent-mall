@@ -38,6 +38,72 @@ final class ProductCatalog
     }
 
     /**
+     * @return list<array<string, mixed>>
+     */
+    public function search(string $query): array
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return [];
+        }
+        $like = '%' . $query . '%';
+        $stmt = $this->pdo->prepare(
+            "SELECT p.*, c.name AS category_name FROM products p
+             JOIN categories c ON c.id = p.category_id
+             WHERE p.status = 'active' AND (p.name LIKE :q OR p.summary LIKE :q2)
+             ORDER BY p.id DESC"
+        );
+        $stmt->execute(['q' => $like, 'q2' => $like]);
+        return $stmt->fetchAll() ?: [];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function categoryBySlug(string $slug): ?array
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM categories WHERE slug = :s AND status = 'active'");
+        $stmt->execute(['s' => $slug]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $row : null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function productsInCategory(int $categoryId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT p.*, c.name AS category_name FROM products p
+             JOIN categories c ON c.id = p.category_id
+             WHERE p.status = 'active' AND p.category_id = :c ORDER BY p.id DESC"
+        );
+        $stmt->execute(['c' => $categoryId]);
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function createCategory(string $name, string $slug): int
+    {
+        $slug = strtolower(trim($slug));
+        if ($name === '' || !preg_match('/^[a-z0-9-]{2,64}$/', $slug)) {
+            throw new DomainException('Category name and slug are required.');
+        }
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO categories (parent_id, slug, name, sort, status) VALUES (NULL, :s, :n, 99, :st)'
+        );
+        $stmt->execute(['s' => $slug, 'n' => $name, 'st' => 'active']);
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function prohibitedRules(): array
+    {
+        return $this->pdo->query('SELECT * FROM prohibited_product_rules ORDER BY id')->fetchAll() ?: [];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function productBySlug(string $slug): ?array
@@ -98,6 +164,22 @@ final class ProductCatalog
         );
         $stmt->execute(['p' => $productId]);
         return $stmt->fetchAll() ?: [];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function skuDirectory(): array
+    {
+        return $this->pdo->query(
+            'SELECT v.id, v.sku, v.title, v.price_minor, v.currency, v.status,
+                    p.name AS product_name, p.slug, p.status AS product_status,
+                    i.on_hand, i.reserved
+             FROM product_variants v
+             JOIN products p ON p.id = v.product_id
+             JOIN inventories i ON i.variant_id = v.id
+             ORDER BY v.id DESC'
+        )->fetchAll() ?: [];
     }
 
     /**
