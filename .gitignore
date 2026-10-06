@@ -3,6 +3,8 @@
 /var/data/*.sqlite-journal
 /var/logs/*
 /var/sessions/*
+/var/cache/**
+!var/cache/.gitkeep
 var/uploads/*
 !var/uploads/.gitkeep
 /vendor/
