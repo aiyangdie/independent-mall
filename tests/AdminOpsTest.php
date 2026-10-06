@@ -98,6 +98,11 @@ final class AdminOpsTest extends TestCase
         $this->assertStringContainsString('Action prefix', $audit->body());
         $bad = $this->kernel->handle(new Request('GET', '/admin/audit', ['action' => 'bad%filter'], [], [], []));
         $this->assertSame(422, $bad->status());
+        $dash = $this->kernel->handle(new Request('GET', '/admin', [], [], [], []));
+        $this->assertSame(200, $dash->status());
+        $this->assertStringContainsString('/admin/audit?action=license.', $dash->body());
+        $this->assertStringContainsString('License audit', $dash->body());
+        $this->assertStringContainsString('Needs internet', $dash->body());
     }
 
     public function testCannotLockAdministratorFromCustomerScreen(): void

@@ -66,7 +66,7 @@ if ($st !== 302 || !str_contains($headers, '/admin')) {
     exit(1);
 }
 [$st, , $dash] = fetch($base . '/admin', $cookieHeader);
-if ($st !== 200 || !str_contains($dash, 'admin@example.invalid')) {
+if ($st !== 200 || !str_contains($dash, 'admin@example.invalid') || !str_contains($dash, '/admin/audit?action=license.')) {
     fwrite(STDERR, "dashboard failed status=$st\n");
     exit(1);
 }

@@ -66,6 +66,11 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('0.1.1-dev', $changelog->body());
         $this->assertStringContainsString('Fake', $changelog->body());
         $this->assertStringContainsString('not a production release', $changelog->body());
+        $docs = $this->site->handle(new Request('GET', '/docs', [], [], [], []));
+        $this->assertStringContainsString('docs/deploy.md', $docs->body());
+        $this->assertStringContainsString('docs/license-server-data.md', $docs->body());
+        $this->assertStringContainsString('never applies packages', $docs->body());
+        $this->assertStringContainsString('docs/ops.md', $docs->body());
         $editions = $this->site->handle(new Request('GET', '/editions', [], [], [], []));
         $this->assertStringContainsString('table-wrap', $editions->body());
         $refunds = $this->site->handle(new Request('GET', '/legal/refunds', [], [], [], []));
