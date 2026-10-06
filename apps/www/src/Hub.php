@@ -87,7 +87,8 @@ final class Hub
         );
         $this->pdo->exec(
             'CREATE TABLE IF NOT EXISTS download_tokens (
-                jti TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                jti TEXT NOT NULL UNIQUE,
                 user_id INTEGER NOT NULL,
                 file_id TEXT NOT NULL,
                 expires_at INTEGER NOT NULL,
@@ -306,7 +307,7 @@ final class Hub
         $stmt = $this->pdo->prepare(
             'SELECT jti, expires_at FROM download_tokens
              WHERE user_id = :u AND file_id = :f AND revoked = 0 AND use_count < max_uses AND expires_at > :n
-             ORDER BY created_at DESC LIMIT 1'
+             ORDER BY id DESC LIMIT 1'
         );
         $stmt->execute(['u' => $userId, 'f' => $fileId, 'n' => $now]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -354,7 +355,7 @@ final class Hub
         $stmt = $this->pdo->prepare(
             'SELECT jti, file_id, expires_at, max_uses, use_count, created_at FROM download_tokens
              WHERE user_id = :u AND revoked = 0 AND use_count < max_uses AND expires_at > :n
-             ORDER BY created_at DESC'
+             ORDER BY id DESC'
         );
         $stmt->execute(['u' => $userId, 'n' => time()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];

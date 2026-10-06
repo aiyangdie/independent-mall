@@ -216,11 +216,11 @@ final class OfficialSiteTest extends TestCase
         $freshAccount = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         preg_match('/download\?token=([a-z0-9-]+\.[0-9]+\.[a-f0-9]+\.[a-f0-9]+)/', $freshAccount->body(), $dl2);
         $this->assertNotEmpty($dl2);
-        preg_match('/name="jti" value="([a-f0-9]{32})"/', $freshAccount->body(), $jti);
-        $this->assertNotEmpty($jti);
+        $parts = explode('.', $dl2[1]);
+        $this->assertCount(4, $parts);
         $this->site->handle(new Request('POST', '/account/download/revoke', [], [
             '_csrf' => $token,
-            'jti' => $jti[1],
+            'jti' => $parts[2],
         ], [], []));
         $afterRevoke = $this->site->handle(new Request('GET', '/account/download', ['token' => $dl2[1]], [], [], []));
         $this->assertSame(400, $afterRevoke->status());
