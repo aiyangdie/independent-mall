@@ -11,6 +11,6 @@ php -S 127.0.0.1:8091 -t public public/index.php
 
 Copy `var/public.pem` to the shop as `var/license-public.pem`. Copy the signed JSON to `var/license.json`. Keep `var/private.pem` only on this host.
 
-`POST /activate` returns signed JSON only. It does not return PHP and does not instruct the shop to `eval` anything.
+`POST /activate` and `POST /unbind` return JSON only. They do not return PHP and do not instruct the shop to `eval` anything.
 
 Refresh belongs on an admin action, not on storefront page views. After expiry, the shop honors `grace_days` (default 14) using `last_refresh_at` already stored in the local document; it does not need the server to be reachable during the grace window.

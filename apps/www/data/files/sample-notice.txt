@@ -1,0 +1,3 @@
+Sample commercial notice module placeholder.
+
+This file is not PHP, not a plugin, and must not be executed. It exists so the official site can demonstrate authenticated, time-limited downloads with path-traversal checks.

@@ -81,6 +81,45 @@ final class LicenseTest extends TestCase
         $store->activate('lic_2', 'secret-token-value', 'host-b');
     }
 
+    public function testUnbindAllowsANewInstance(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $store->issue('lic_3', 'token-three-xx', ['storefront_notice'], gmdate('c', time() + 86400));
+        $store->activate('lic_3', 'token-three-xx', 'host-a');
+        $store->unbind('lic_3');
+        $again = $store->activate('lic_3', 'token-three-xx', 'host-b');
+        $this->assertSame('host-b', $again['instance_id']);
+    }
+
+    public function testFutureIssuedAtBeyondSkewIsRejected(): void
+    {
+        $pair = Signer::generateKeypair();
+        $dir = sys_get_temp_dir() . '/im-lic-skew-' . bin2hex(random_bytes(3));
+        mkdir($dir, 0775, true);
+        $now = time();
+        $payload = [
+            'license_id' => 'lic_skew',
+            'instance_id' => 'shop-1',
+            'entitlements' => ['storefront_notice'],
+            'issued_at' => gmdate('c', $now + 600),
+            'last_refresh_at' => gmdate('c', $now + 600),
+            'expires_at' => gmdate('c', $now + 3600),
+            'grace_days' => 14,
+            'revoked' => false,
+        ];
+        file_put_contents($dir . '/var-license.json', json_encode(Signer::sign($payload, $pair['private'])));
+        file_put_contents($dir . '/pub.pem', $pair['public']);
+        $gate = new FileLicenseGate($dir . '/var-license.json', $dir . '/pub.pem', new FrozenClock($now));
+        $this->assertFalse($gate->allows(['storefront_notice']));
+        $payload['issued_at'] = gmdate('c', $now + 60);
+        $payload['last_refresh_at'] = gmdate('c', $now + 60);
+        file_put_contents($dir . '/var-license.json', json_encode(Signer::sign($payload, $pair['private'])));
+        $near = new FileLicenseGate($dir . '/var-license.json', $dir . '/pub.pem', new FrozenClock($now));
+        $this->assertTrue($near->allows(['storefront_notice']));
+    }
+
     public function testExpiredLicenseDoesNotBreakStorefront(): void
     {
         $root = dirname(__DIR__);
@@ -97,7 +136,7 @@ final class LicenseTest extends TestCase
 
     public function testNoPrivateKeysInCommunityOrSamplePlugin(): void
     {
-        foreach ([$this->root() . '/src', $this->root() . '/modules', $this->root() . '/apps/license-server/src'] as $dir) {
+        foreach ([$this->root() . '/src', $this->root() . '/modules', $this->root() . '/apps/license-server/src', $this->root() . '/apps/www/src'] as $dir) {
             $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
             foreach ($it as $file) {
                 if ($file->getExtension() !== 'php' && $file->getExtension() !== 'md' && $file->getExtension() !== 'json') {

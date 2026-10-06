@@ -41,5 +41,25 @@ if ($method === 'POST' && $path === '/activate') {
     exit;
 }
 
+if ($method === 'POST' && $path === '/unbind') {
+    $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    try {
+        $id = (string) ($body['license_id'] ?? '');
+        $token = (string) ($body['token'] ?? '');
+        $stmt = $pdo->prepare('SELECT token_hash FROM licenses WHERE id = :i');
+        $stmt->execute(['i' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row) || !hash_equals((string) $row['token_hash'], hash('sha256', $token))) {
+            throw new DomainException('Unknown license.');
+        }
+        $store->unbind($id);
+        echo json_encode(['ok' => true]);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 http_response_code(404);
 echo json_encode(['error' => 'not found']);

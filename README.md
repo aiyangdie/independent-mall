@@ -31,6 +31,7 @@ php -S 127.0.0.1:8090 -t public public/index.php
 ```
 
 - Storefront: http://127.0.0.1:8090/
+- Official site (marketing + customer center): http://127.0.0.1:8092/ (see `apps/www/README.md`)
 - Register / sign in: http://127.0.0.1:8090/register
 - Health: http://127.0.0.1:8090/healthz
 - Admin: http://127.0.0.1:8090/admin/login

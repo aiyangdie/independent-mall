@@ -3,6 +3,8 @@
 /var/license-public.pem
 /apps/license-server/var/*
 !/apps/license-server/var/.gitkeep
+/apps/www/var/*
+!/apps/www/var/.gitkeep
 /var/data/*.sqlite
 /var/data/*.sqlite-journal
 /var/logs/*

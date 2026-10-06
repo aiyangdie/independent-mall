@@ -47,6 +47,10 @@ final class FileLicenseGate implements LicenseGate
             }
         }
         $now = $this->clock->now();
+        $issued = strtotime((string) ($payload['issued_at'] ?? '')) ?: 0;
+        if ($issued > $now + 300) {
+            return false;
+        }
         $expires = strtotime((string) ($payload['expires_at'] ?? '')) ?: 0;
         $graceDays = max(0, (int) ($payload['grace_days'] ?? 14));
         if ($now <= $expires + 300) {

@@ -1,0 +1,5 @@
+Independent Mall community 0.1.0-dev snapshot notes.
+
+Clients must hash this file with SHA-256 and compare /updates.json.
+Clients must refuse automatic replacement when signature is empty.
+Do not eval or include this file as PHP.

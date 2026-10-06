@@ -23,3 +23,5 @@ All state-changing POST bodies require `_csrf`. JSON health check is unauthentic
 Fake payment notify is invoked from `/orders/{id}/pay-fake` using server-side amount and HMAC. Shoppers cannot supply a new total.
 
 Digital download tokens are hashed at rest (`HMAC-SHA256` with `APP_KEY`). The plaintext token is shown once after fake payment success and is not written to logs.
+
+Official site (`apps/www`, local `:8092`) is a separate process: `/` `/editions` `/pricing` `/docs` `/changelog` `/contact` `/legal/*` `/updates.json` `/register` `/login` `/account` plus Fake buy, bind, unbind, tickets, and HMAC downloads. The shop never calls it on boot.
