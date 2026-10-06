@@ -18,7 +18,7 @@
 
 <h2>Commercial license issuer (separate process)</h2>
 <ul>
-    <li><code>apps/license-server/README.md</code> — keys, issue, activate, revoke, purge</li>
+    <li><code>apps/license-server/README.md</code> — keys, product/version catalog, issue, activate, renew, revoke, purge</li>
     <li><code>docs/license-server-data.md</code> — fields stored, retention, what is never collected</li>
 </ul>
 
