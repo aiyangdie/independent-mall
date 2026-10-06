@@ -1,0 +1,32 @@
+{
+  "name": "independent-mall/community",
+  "description": "Independent Mall community edition: a general-purpose goods and services storefront.",
+  "type": "project",
+  "license": "UNLICENSED",
+  "require": {
+    "php": ">=8.2",
+    "ext-pdo": "*",
+    "ext-openssl": "*",
+    "ext-mbstring": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "IndependentMall\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "IndependentMall\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit",
+    "migrate": "php bin/console migrate"
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

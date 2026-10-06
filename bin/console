@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+use IndependentMall\Auth\AdminProvisioner;
+use IndependentMall\Auth\PasswordHasher;
+use IndependentMall\Kernel;
+
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+
+$command = $argv[1] ?? 'help';
+$kernel = Kernel::boot($root, false);
+
+if ($command === 'migrate') {
+    $ran = $kernel->migrator()->migrate();
+    echo $ran === [] ? "No pending migrations.\n" : ("Applied: " . implode(', ', $ran) . "\n");
+    exit(0);
+}
+
+if ($command === 'admin:create') {
+    $email = $kernel->config->get('ADMIN_EMAIL');
+    $password = $kernel->config->get('ADMIN_PASSWORD');
+    $username = 'admin';
+    $id = (new AdminProvisioner($kernel->pdo, new PasswordHasher()))->create($email, $username, $password);
+    echo "Created admin user id={$id} email={$email}\n";
+    exit(0);
+}
+
+if ($command === 'health') {
+    echo json_encode($kernel->health(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+    exit(0);
+}
+
+echo "Usage: php bin/console [migrate|admin:create|health]\n";
+exit(1);

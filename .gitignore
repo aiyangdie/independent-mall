@@ -1,0 +1,15 @@
+/.env
+/var/data/*.sqlite
+/var/data/*.sqlite-journal
+/var/logs/*
+/var/sessions/*
+/var/cache/*
+/vendor/
+.phpunit.cache
+/php_local_error.log
+composer.lock.bak
+*.log
+!var/data/.gitkeep
+!var/logs/.gitkeep
+!var/sessions/.gitkeep
+!var/cache/.gitkeep
