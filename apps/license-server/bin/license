@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
-require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require $root . '/bootstrap.php';
 
 use IndependentMall\LicenseServer\Signer;
 use IndependentMall\LicenseServer\Store;

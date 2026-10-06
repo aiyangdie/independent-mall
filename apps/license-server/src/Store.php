@@ -67,6 +67,7 @@ final class Store
         if ((int) $row['revoked'] === 1) {
             throw new \DomainException('License revoked.');
         }
+        $instanceId = $this->requireInstanceId($instanceId);
         $bound = (string) ($row['instance_id'] ?? '');
         if ($bound !== '' && $bound !== $instanceId) {
             throw new \DomainException('License is bound to another instance.');
@@ -113,6 +114,7 @@ final class Store
         if ((int) $row['revoked'] === 1) {
             throw new \DomainException('License revoked.');
         }
+        $instanceId = $this->requireInstanceId($instanceId);
         $bound = (string) ($row['instance_id'] ?? '');
         if ($bound === '' || $bound !== $instanceId) {
             throw new \DomainException('License is not bound to this instance.');
@@ -129,6 +131,15 @@ final class Store
             'grace_days' => (int) $row['grace_days'],
             'revoked' => false,
         ];
+    }
+
+    private function requireInstanceId(string $instanceId): string
+    {
+        $instanceId = trim($instanceId);
+        if (preg_match('/^[a-zA-Z0-9._:-]{3,128}$/', $instanceId) !== 1) {
+            throw new \DomainException('Instance id is not acceptable.');
+        }
+        return $instanceId;
     }
 
     /**

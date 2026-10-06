@@ -10,8 +10,8 @@ Status is only marked done after tests or HTTP checks in that environment.
 | 3 | Cart, address, orders, fake pay, delivery, refunds | Done locally: PHPUnit 18/18; HTTP register→cart→checkout→fake pay→refund on :8090 |
 | 4 | Storefront + admin screens, responsive pass | In progress locally: skip link, split nav, table overflow, 640px column layout. Real-device visual QA not signed off |
 | 5 | Installer, deploy/upgrade docs, release checklist | In progress locally: doctor/install lock, backup/restore, release:scan, HTTP smoke, healthz network_required=false. Spare-machine install and NIC unplug not signed off |
-| 6 | Commercial module seam + sample plugin | In progress locally: Kernel FileLicenseGate + `/admin/license` enables sample-notice; default deny without local document; `src/` must not import commercial classes |
-| 7 | License server | In progress locally: admin/CLI refresh only; failure keeps local document and grace; storefront does not call the server |
+| 6 | Commercial module seam + sample plugin | In progress locally: Kernel FileLicenseGate + `/admin/license`; PHPUnit still OK with `modules/commercial` removed (one skip). `src/` must not import commercial classes |
+| 7 | License server | In progress locally: own composer.json/bootstrap; activate rejects blank instance ids; admin/CLI refresh only; storefront does not call the server |
 | 8 | Public marketing/account site | In progress locally: inspect-updates (verify only); refunds/prohibited/disclaimer drafts. No production auto-updater or counsel sign-off |
 
 Local URLs used in development: `http://127.0.0.1:8090/` (does not bind to the legacy shop on 8080).

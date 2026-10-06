@@ -206,6 +206,31 @@ final class LicenseTest extends TestCase
         $this->assertNotSame('', $again['last_refresh_at']);
     }
 
+    public function testActivateRejectsBlankInstanceId(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $store->issue('lic_blank', 'token-blank-xx', ['storefront_notice'], gmdate('c', time() + 86400));
+        $this->expectException(\DomainException::class);
+        $store->activate('lic_blank', 'token-blank-xx', '  ');
+    }
+
+    public function testLicenseServerLoadsFromItsOwnBootstrap(): void
+    {
+        $root = $this->root() . '/apps/license-server';
+        $boot = (string) file_get_contents($root . '/bootstrap.php');
+        $this->assertStringContainsString("'/vendor/autoload.php'", $boot);
+        $this->assertStringNotContainsString('IndependentMall\\Kernel', $boot);
+        $http = (string) file_get_contents($root . '/public/index.php');
+        $this->assertStringContainsString("bootstrap.php", $http);
+        $this->assertStringNotContainsString('IndependentMall\\Kernel', $http);
+        $this->assertStringNotContainsString('eval(', $http);
+        require $root . '/bootstrap.php';
+        $this->assertTrue(class_exists(Signer::class));
+        $this->assertTrue(class_exists(Store::class));
+    }
+
     public function testNoPrivateKeysInCommunityOrSamplePlugin(): void
     {
         foreach ([$this->root() . '/src', $this->root() . '/modules', $this->root() . '/apps/license-server/src', $this->root() . '/apps/www/src'] as $dir) {

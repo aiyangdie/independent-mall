@@ -3,11 +3,15 @@ Independent license server (separate process and SQLite file). It never ships in
 This OpenSSL build exposes Ed25519 as `OPENSSL_KEYTYPE_ED25519`. If that constant is missing, the server refuses to generate keys.
 
 ```bat
+cd apps\license-server
+composer install --no-dev
 php bin/license keys
 php bin/license issue --id=lic_demo --days=365
 php bin/license offline --id=lic_demo --token=TOKEN --instance=shop-1 --out=license.json
 php -S 127.0.0.1:8091 -t public public/index.php
 ```
+
+If Composer was already run at the Community tree root, `bootstrap.php` reuses that `vendor/autoload.php`. A dedicated `composer.json` here is for deploying the issuer alone.
 
 Copy `var/public.pem` to the shop as `var/license-public.pem`. Copy the signed JSON to `var/license.json`. Keep `var/private.pem` only on this host.
 

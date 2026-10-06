@@ -1,0 +1,20 @@
+{
+    "name": "independent-mall/license-server",
+    "description": "Independent Mall license issuer. Separate process, database, and private key from Community Edition.",
+    "type": "project",
+    "license": "UNLICENSED",
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo": "*",
+        "ext-openssl": "*",
+        "ext-mbstring": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "IndependentMall\\LicenseServer\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

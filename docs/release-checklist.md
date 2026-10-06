@@ -9,6 +9,7 @@ Local tree `codex/community-core`, PHP 8.5.10, 2026-10-06:
 - [x] `migrate` is a no-op on a freshly installed schema and applies when a new `database/migrations/*.sql` file is added (same test).
 - [x] HTTP smoke: register → cart → fake pay → refund (`tests/http_commerce_smoke.php`) against `http://127.0.0.1:8090/` (this Community shop, PHP 8.5.10). Storefront smoke also passed. Latest local demo order id 6.
 - [x] `/healthz` shows `"license_required": false`, `"network_required": false`, and `"edition": "community"` on loopback (`http://127.0.0.1:8090/healthz`). Storefront has no `curl_init` except admin refresh (`tests/OfflineCoreTest.php`). Physical NIC unplug was not performed.
+- [x] Renaming `modules/commercial` aside still yields PHPUnit OK (one skip: Kernel signed-license sample-notice). Directory restored afterward.
 - [x] `.env` is gitignored. Installer writes a real `APP_KEY` and empty `ADMIN_PASSWORD`.
 - [x] Sample listings come from `DemoSeeder` (lawful/fictional).
 - [x] `php bin/console release:scan` (and `ReleaseScan` tests) — no private keys, legacy brand, `eval(`, or remote `file_get_contents` in scanned trees.
