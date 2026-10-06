@@ -186,6 +186,8 @@ final class Site
         $bought = $this->hub->fakeBuyNotice($uid);
         $_SESSION['www_flash'] = 'Fake payment recorded. Product '
             . $bought['product_code'] . '@' . $bought['product_version']
+            . ' customer ' . $bought['customer_id']
+            . ' issuer order ' . $bought['issuer_order_id']
             . '. License ' . $bought['license_id']
             . ' token (shown once): ' . $bought['token']
             . ' nonce (shown once): ' . $bought['nonce'];

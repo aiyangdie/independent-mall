@@ -57,6 +57,20 @@ final class Store
                 created_at TEXT NOT NULL
             )'
         );
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS commercial_orders (
+                id TEXT PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                product_code TEXT NOT NULL,
+                product_version TEXT NOT NULL,
+                license_id TEXT NOT NULL DEFAULT \'\',
+                amount_minor INTEGER NOT NULL,
+                currency TEXT NOT NULL DEFAULT \'XXX\',
+                status TEXT NOT NULL,
+                adapter TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )'
+        );
         $this->ensureNonceColumn();
         $this->ensureLicenseProductColumns();
         $this->ensureLicenseCustomerColumn();
@@ -165,6 +179,31 @@ final class Store
     }
 
     /**
+     * Returns an existing customer id for the email, or registers `$id` when new.
+     */
+    public function ensureCustomer(string $id, string $email, string $note = ''): string
+    {
+        $email = strtolower(trim($email));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException('Customer email is not acceptable.');
+        }
+        $byEmail = $this->pdo->prepare('SELECT id FROM customers WHERE email = :e');
+        $byEmail->execute(['e' => $email]);
+        $existing = $byEmail->fetchColumn();
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+        $id = $this->requireCustomerId($id);
+        $byId = $this->pdo->prepare('SELECT id FROM customers WHERE id = :i');
+        $byId->execute(['i' => $id]);
+        if ($byId->fetchColumn()) {
+            return $id;
+        }
+        $this->registerCustomer($id, $email, $note);
+        return $id;
+    }
+
+    /**
      * Commercial B2B contacts for this issuer only — not Community shop shoppers.
      *
      * @return list<array<string, mixed>>
@@ -183,6 +222,125 @@ final class Store
                 'email' => (string) $row['email'],
                 'note' => (string) $row['note'],
                 'license_count' => (int) $countStmt->fetchColumn(),
+                'created_at' => (string) $row['created_at'],
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Fake commercial fulfillment: order row + catalog license for a B2B customer.
+     * Does not talk to a card network. Amount is display bookkeeping only.
+     *
+     * @return string Activation nonce (shown once)
+     */
+    public function fulfillFakeOrder(
+        string $orderId,
+        string $customerId,
+        string $productCode,
+        string $productVersion,
+        string $licenseId,
+        string $token,
+        string $expiresAt,
+        int $amountMinor,
+        int $graceDays = 14,
+    ): string {
+        $orderId = $this->requireOrderId($orderId);
+        $customerId = $this->requireCustomerId($customerId);
+        $productCode = $this->requireProductCode($productCode);
+        $productVersion = $this->requireVersion($productVersion);
+        if ($amountMinor < 0 || $amountMinor > 1_000_000_000) {
+            throw new \InvalidArgumentException('Order amount is not acceptable.');
+        }
+        $cstmt = $this->pdo->prepare('SELECT 1 FROM customers WHERE id = :i');
+        $cstmt->execute(['i' => $customerId]);
+        if (!$cstmt->fetchColumn()) {
+            throw new \DomainException('Unknown customer.');
+        }
+        $dup = $this->pdo->prepare('SELECT 1 FROM commercial_orders WHERE id = :i');
+        $dup->execute(['i' => $orderId]);
+        if ($dup->fetchColumn()) {
+            throw new \DomainException('Order already exists.');
+        }
+        $this->pdo->beginTransaction();
+        try {
+            $now = gmdate('c');
+            $this->pdo->prepare(
+                'INSERT INTO commercial_orders
+                 (id, customer_id, product_code, product_version, license_id, amount_minor, currency, status, adapter, created_at)
+                 VALUES (:i, :c, :pc, :pv, :l, :a, :cur, :st, :ad, :t)'
+            )->execute([
+                'i' => $orderId,
+                'c' => $customerId,
+                'pc' => $productCode,
+                'pv' => $productVersion,
+                'l' => '',
+                'a' => $amountMinor,
+                'cur' => 'XXX',
+                'st' => 'fake_completed',
+                'ad' => 'fake',
+                't' => $now,
+            ]);
+            $nonce = $this->issueForProduct(
+                $licenseId,
+                $token,
+                $productCode,
+                $productVersion,
+                $expiresAt,
+                $graceDays,
+                $customerId,
+            );
+            $this->pdo->prepare('UPDATE commercial_orders SET license_id = :l WHERE id = :i')
+                ->execute(['l' => $licenseId, 'i' => $orderId]);
+            $this->audit($licenseId, 'order_fulfill', [
+                'order_id' => $orderId,
+                'customer_id' => $customerId,
+                'product_code' => $productCode,
+                'product_version' => $productVersion,
+                'amount_minor' => $amountMinor,
+                'adapter' => 'fake',
+            ]);
+            $this->pdo->commit();
+            return $nonce;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function commercialOrders(?string $customerId = null): array
+    {
+        if ($customerId !== null && $customerId !== '') {
+            $customerId = $this->requireCustomerId($customerId);
+            $stmt = $this->pdo->prepare(
+                'SELECT id, customer_id, product_code, product_version, license_id, amount_minor, currency, status, adapter, created_at
+                 FROM commercial_orders WHERE customer_id = :c ORDER BY created_at DESC'
+            );
+            $stmt->execute(['c' => $customerId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } else {
+            $rows = $this->pdo->query(
+                'SELECT id, customer_id, product_code, product_version, license_id, amount_minor, currency, status, adapter, created_at
+                 FROM commercial_orders ORDER BY created_at DESC'
+            )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = [
+                'id' => (string) $row['id'],
+                'customer_id' => (string) $row['customer_id'],
+                'product_code' => (string) $row['product_code'],
+                'product_version' => (string) $row['product_version'],
+                'license_id' => (string) $row['license_id'],
+                'amount_minor' => (int) $row['amount_minor'],
+                'currency' => (string) $row['currency'],
+                'status' => (string) $row['status'],
+                'adapter' => (string) $row['adapter'],
                 'created_at' => (string) $row['created_at'],
             ];
         }
@@ -532,6 +690,15 @@ final class Store
         $id = strtolower(trim($id));
         if (preg_match('/^[a-z][a-z0-9_-]{1,63}$/', $id) !== 1) {
             throw new \InvalidArgumentException('Customer id is not acceptable.');
+        }
+        return $id;
+    }
+
+    private function requireOrderId(string $id): string
+    {
+        $id = strtolower(trim($id));
+        if (preg_match('/^[a-z][a-z0-9_-]{1,63}$/', $id) !== 1) {
+            throw new \InvalidArgumentException('Order id is not acceptable.');
         }
         return $id;
     }

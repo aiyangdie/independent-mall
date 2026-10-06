@@ -63,6 +63,67 @@ if ($command === 'customers') {
     exit(0);
 }
 
+if ($command === 'fulfill') {
+    $orderId = '';
+    $customer = '';
+    $product = '';
+    $version = '';
+    $licenseId = '';
+    $days = 365;
+    $amount = 9900;
+    $token = bin2hex(random_bytes(16));
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--order=')) {
+            $orderId = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--customer=')) {
+            $customer = substr($arg, 11);
+        } elseif (str_starts_with($arg, '--product=')) {
+            $product = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--version=')) {
+            $version = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--license=')) {
+            $licenseId = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--days=')) {
+            $days = (int) substr($arg, 7);
+        } elseif (str_starts_with($arg, '--amount=')) {
+            $amount = (int) substr($arg, 9);
+        }
+    }
+    if ($orderId === '' || $customer === '' || $product === '' || $version === '' || $licenseId === '') {
+        fwrite(STDERR, "Usage: php bin/license fulfill --order=ord_1 --customer=cust_demo --product=sample-notice --version=1.0.0 --license=lic_1 [--amount=9900] [--days=365]\n");
+        exit(1);
+    }
+    try {
+        $nonce = $store->fulfillFakeOrder(
+            $orderId,
+            $customer,
+            $product,
+            $version,
+            $licenseId,
+            $token,
+            gmdate('c', time() + $days * 86400),
+            $amount,
+        );
+        echo "Fulfilled {$orderId} → {$licenseId}. Token (keep for refresh/unbind): {$token}\nActivation nonce (shown once): {$nonce}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
+if ($command === 'orders') {
+    $customer = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--customer=')) {
+            $customer = substr($arg, 11);
+        }
+    }
+    $list = $customer !== '' ? $store->commercialOrders($customer) : $store->commercialOrders();
+    echo json_encode($list, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), "\n";
+    exit(0);
+}
+
 if ($command === 'product') {
     $code = '';
     $name = '';
@@ -317,5 +378,5 @@ if ($command === 'status') {
     exit(0);
 }
 
-echo "Usage: php bin/license [keys|customer|customers|product|version|products|issue|offline|revoke|renew|purge|status]\n";
+echo "Usage: php bin/license [keys|customer|customers|fulfill|orders|product|version|products|issue|offline|revoke|renew|purge|status]\n";
 exit(1);

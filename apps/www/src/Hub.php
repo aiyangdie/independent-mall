@@ -137,13 +137,19 @@ final class Hub
 
     /**
      * Fake commercial SKU only. Does not talk to a card network.
-     * Issues via the license-server product catalog (sample-notice@1.0.0).
+     * Ensures a B2B customer, records an issuer commercial_order, and issues via sample-notice@1.0.0.
      *
-     * @return array{order_id:int,license_id:string,token:string,nonce:string,product_code:string,product_version:string}
+     * @return array{order_id:int,issuer_order_id:string,customer_id:string,license_id:string,token:string,nonce:string,product_code:string,product_version:string}
      */
     public function fakeBuyNotice(int $userId): array
     {
         $this->ensureDemoCatalog();
+        $email = $this->userEmail($userId);
+        $customerId = $this->store->ensureCustomer(
+            'www_u' . $userId,
+            $email,
+            'Official-site Fake account',
+        );
         $this->pdo->prepare(
             'INSERT INTO orders (user_id, sku, amount_minor, status, adapter, created_at)
              VALUES (:u, :s, :a, :st, :ad, :t)'
@@ -156,15 +162,19 @@ final class Hub
             't' => gmdate('c'),
         ]);
         $orderId = (int) $this->pdo->lastInsertId();
+        $issuerOrderId = 'ord_' . bin2hex(random_bytes(6));
         $licenseId = 'lic_' . bin2hex(random_bytes(6));
         $token = bin2hex(random_bytes(16));
         $expires = gmdate('c', time() + 86400 * 365);
-        $nonce = $this->store->issueForProduct(
-            $licenseId,
-            $token,
+        $nonce = $this->store->fulfillFakeOrder(
+            $issuerOrderId,
+            $customerId,
             self::DEMO_PRODUCT,
             self::DEMO_VERSION,
+            $licenseId,
+            $token,
             $expires,
+            9900,
         );
         $status = $this->store->status($licenseId);
         $payload = [
@@ -173,6 +183,7 @@ final class Hub
             'entitlements' => $status['entitlements'],
             'product_code' => (string) $status['product_code'],
             'product_version' => (string) $status['product_version'],
+            'customer_id' => (string) $status['customer_id'],
             'issued_at' => gmdate('c'),
             'last_refresh_at' => gmdate('c'),
             'expires_at' => $expires,
@@ -192,12 +203,16 @@ final class Hub
         ]);
         $this->log($userId, 'fake_buy', [
             'order_id' => $orderId,
+            'issuer_order_id' => $issuerOrderId,
+            'customer_id' => $customerId,
             'license_id' => $licenseId,
             'product_code' => self::DEMO_PRODUCT,
             'product_version' => self::DEMO_VERSION,
         ]);
         return [
             'order_id' => $orderId,
+            'issuer_order_id' => $issuerOrderId,
+            'customer_id' => $customerId,
             'license_id' => $licenseId,
             'token' => $token,
             'nonce' => $nonce,
@@ -214,6 +229,16 @@ final class Hub
         $stmt = $this->pdo->prepare('SELECT * FROM orders WHERE user_id = :u ORDER BY id DESC');
         $stmt->execute(['u' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Issuer-side Fake commercial orders (shared Store). Not Community shop cart orders.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function issuerCommercialOrders(?string $customerId = null): array
+    {
+        return $this->store->commercialOrders($customerId);
     }
 
     /**
@@ -234,6 +259,7 @@ final class Hub
             $row['expires_at'] = (string) ($payload['expires_at'] ?? '');
             $row['product_code'] = (string) ($payload['product_code'] ?? '');
             $row['product_version'] = (string) ($payload['product_version'] ?? '');
+            $row['customer_id'] = (string) ($payload['customer_id'] ?? '');
             $row['status'] = !empty($payload['revoked']) ? 'revoked' : ($instance !== '' ? 'bound' : 'unbound');
         }
         unset($row);
@@ -680,6 +706,17 @@ final class Hub
     public function publicPem(): string
     {
         return $this->publicPem;
+    }
+
+    private function userEmail(int $userId): string
+    {
+        $stmt = $this->pdo->prepare('SELECT email FROM users WHERE id = :i');
+        $stmt->execute(['i' => $userId]);
+        $email = $stmt->fetchColumn();
+        if (!is_string($email) || $email === '') {
+            throw new \DomainException('Account email is missing.');
+        }
+        return $email;
     }
 
     /**

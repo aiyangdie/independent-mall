@@ -14,6 +14,7 @@ This document lists what the Independent Mall license issuer stores. It is not a
 | `product_version` | Catalog version used at issue (optional) | Semver-like string | Until purge |
 | `customer_id` | Optional link to a commercial B2B customer | Lowercase slug | Until purge |
 | `customers` | Issuer-side commercial contacts (not shop shoppers) | id, email, optional note | Kept until operator deletes DB; not removed by license purge |
+| `commercial_orders` | Fake/bookkeeping commercial sales | order id, customer, product/version, linked license_id, amount_minor, adapter `fake`, status | Kept until operator deletes DB; not removed by license purge |
 | `expires_at` | End of paid window | UTC ISO-8601 | Until purge |
 | `grace_days` | Offline grace after expiry | Integer (default 14) | Until purge |
 | `instance_id` | Bound shop instance | Operator-chosen id (hostname hash + install UUID recommended); not a consumer fingerprint | Cleared on unbind; row kept until purge |

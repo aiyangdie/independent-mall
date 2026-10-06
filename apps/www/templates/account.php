@@ -29,6 +29,9 @@ $flash = $e((string) ($data['flash'] ?? ''));
         <?php if (($row['product_code'] ?? '') !== ''): ?>
             · product <code><?= $e((string) $row['product_code']) ?>@<?= $e((string) ($row['product_version'] ?? '')) ?></code>
         <?php endif; ?>
+        <?php if (($row['customer_id'] ?? '') !== ''): ?>
+            · customer <code><?= $e((string) $row['customer_id']) ?></code>
+        <?php endif; ?>
         <?php if (!empty($row['revoked'])): ?>
             (commercial modules off; Community checkout unaffected)
         <?php elseif (!empty($row['bound'])): ?>

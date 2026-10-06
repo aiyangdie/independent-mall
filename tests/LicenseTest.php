@@ -462,6 +462,61 @@ final class LicenseTest extends TestCase
         $this->assertStringNotContainsString($nonce, $encoded);
     }
 
+    public function testFulfillFakeOrderLinksCustomerProductAndLicense(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $cust = $store->ensureCustomer('cust_ord', 'buyer@example.invalid', 'order demo');
+        $this->assertSame('cust_ord', $cust);
+        $this->assertSame('cust_ord', $store->ensureCustomer('cust_other', 'buyer@example.invalid'));
+        $store->registerProduct('sample-notice', 'Sample notice module', ['storefront_notice']);
+        $store->registerVersion('sample-notice', '1.0.0', 'v1');
+        $token = 'token-order-xxxx';
+        $nonce = $store->fulfillFakeOrder(
+            'ord_demo1',
+            'cust_ord',
+            'sample-notice',
+            '1.0.0',
+            'lic_ord1',
+            $token,
+            gmdate('c', time() + 86400),
+            9900,
+        );
+        $orders = $store->commercialOrders('cust_ord');
+        $this->assertCount(1, $orders);
+        $this->assertSame('ord_demo1', $orders[0]['id']);
+        $this->assertSame('lic_ord1', $orders[0]['license_id']);
+        $this->assertSame(9900, $orders[0]['amount_minor']);
+        $this->assertSame('fake', $orders[0]['adapter']);
+        $this->assertSame('fake_completed', $orders[0]['status']);
+        $status = $store->status('lic_ord1');
+        $this->assertSame('cust_ord', $status['customer_id']);
+        $this->assertSame('sample-notice', $status['product_code']);
+        $this->assertSame('order_fulfill', $status['recent_audit'][0]['action']);
+        $payload = $store->activate('lic_ord1', $token, 'shop-ord-1', $nonce);
+        $this->assertSame('cust_ord', $payload['customer_id']);
+        try {
+            $store->fulfillFakeOrder(
+                'ord_demo1',
+                'cust_ord',
+                'sample-notice',
+                '1.0.0',
+                'lic_ord2',
+                'token-order-yyyy',
+                gmdate('c', time() + 86400),
+                9900,
+            );
+            $this->fail('duplicate order');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('already exists', $e->getMessage());
+        }
+        $all = json_encode($store->commercialOrders());
+        $this->assertIsString($all);
+        $this->assertStringNotContainsString($token, $all);
+        $this->assertStringNotContainsString($nonce, $all);
+    }
+
     public function testRenewExtendsExpiryAndRejectsRevokedOrShorter(): void
     {
         $pdo = new \PDO('sqlite::memory:');
@@ -539,6 +594,7 @@ final class LicenseTest extends TestCase
         $this->assertStringContainsString('token_hash', $dataDoc);
         $this->assertStringContainsString('product_code', $dataDoc);
         $this->assertStringContainsString('customer_id', $dataDoc);
+        $this->assertStringContainsString('commercial_orders', $dataDoc);
         $this->assertStringContainsString('Not collected', $dataDoc);
         $this->assertStringContainsString('purge', $dataDoc);
         $this->assertStringNotContainsString('eval(', $http);
