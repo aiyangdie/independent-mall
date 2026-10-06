@@ -12,6 +12,7 @@
     <a class="brand" href="/">Independent Mall</a>
     <nav>
         <a href="/">Catalog</a>
+        <a href="/admin/products">Products</a>
         <a href="/admin/login">Admin</a>
     </nav>
 </header>

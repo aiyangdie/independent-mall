@@ -27,6 +27,9 @@ final class Router
             if ($route['pattern'] === $request->path()) {
                 return ($route['handler'])($request);
             }
+            if (str_starts_with($route['pattern'], '#') && preg_match($route['pattern'], $request->path(), $matches)) {
+                return ($route['handler'])($request, $matches);
+            }
         }
         return Response::html('Not found', 404);
     }

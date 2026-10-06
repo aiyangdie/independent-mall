@@ -3,7 +3,8 @@
 /var/data/*.sqlite-journal
 /var/logs/*
 /var/sessions/*
-/var/cache/*
+var/uploads/*
+!var/uploads/.gitkeep
 /vendor/
 .phpunit.cache
 /php_local_error.log

@@ -10,6 +10,9 @@ use IndependentMall\Auth\SessionAuth;
 use IndependentMall\Config\Config;
 use IndependentMall\Database\ConnectionFactory;
 use IndependentMall\Database\Migrator;
+use IndependentMall\Catalog\ImageStore;
+use IndependentMall\Catalog\ProductCatalog;
+use IndependentMall\Catalog\ProhibitedGoodsPolicy;
 use IndependentMall\Http\Csrf;
 use IndependentMall\Http\Request;
 use IndependentMall\Http\Response;
@@ -58,11 +61,6 @@ final class Kernel
     private function registerRoutes(): void
     {
         $this->router->add('GET', '/healthz', fn () => Response::json($this->health()));
-        $this->router->add('GET', '/', function () {
-            return Response::html($this->view->render('store/home', [
-                'title' => 'Independent Mall',
-            ]));
-        });
         $this->router->add('GET', '/admin/login', function () {
             if ($this->auth->can('admin.access')) {
                 return Response::redirect('/admin');
@@ -115,6 +113,7 @@ final class Kernel
                 'health' => $this->health(),
             ]));
         });
+        $this->registerCatalogRoutes();
     }
 
     /**
@@ -155,5 +154,171 @@ final class Kernel
             $this->config->int('SESSION_LIFETIME', 7200),
             $this->config->bool('SESSION_SECURE'),
         );
+    }
+
+    private function catalog(): ProductCatalog
+    {
+        return new ProductCatalog($this->pdo, new ProhibitedGoodsPolicy($this->pdo), new AuditLogger($this->pdo));
+    }
+
+    private function images(): ImageStore
+    {
+        return new ImageStore($this->pdo, $this->config->root() . '/var/uploads', new AuditLogger($this->pdo));
+    }
+
+    private function requireAdmin(): ?Response
+    {
+        if (!$this->auth->can('admin.access')) {
+            return Response::redirect('/admin/login');
+        }
+        return null;
+    }
+
+    private function registerCatalogRoutes(): void
+    {
+        $this->router->add('GET', '/', function () {
+            $items = $this->catalog()->storefrontProducts();
+            return Response::html($this->view->render('store/home', [
+                'title' => 'Independent Mall',
+                'products' => $items,
+            ]));
+        });
+        $this->router->add('GET', '#^/p/([a-z0-9-]+)$#', function (Request $request, array $m) {
+            $catalog = $this->catalog();
+            $product = $catalog->productBySlug($m[1]);
+            if ($product === null || $product['status'] !== 'active') {
+                return Response::html('Not found', 404);
+            }
+            return Response::html($this->view->render('store/product', [
+                'title' => $product['name'],
+                'product' => $product,
+                'variants' => $catalog->variants((int) $product['id']),
+                'images' => $catalog->images((int) $product['id']),
+                'csrf' => $this->csrf->field(),
+            ]));
+        });
+        $this->router->add('POST', '#^/p/([a-z0-9-]+)/report$#', function (Request $request, array $m) {
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $catalog = $this->catalog();
+            $product = $catalog->productBySlug($m[1]);
+            if ($product === null) {
+                return Response::html('Not found', 404);
+            }
+            $catalog->report((int) $product['id'], $request->post('reason', 'other'), $request->post('detail'));
+            return Response::redirect('/p/' . $m[1]);
+        });
+        $this->router->add('GET', '#^/media/([a-f0-9]{32}\.(jpg|png|webp))$#', function (Request $request, array $m) {
+            $path = $this->images()->pathFor($m[1]);
+            if ($path === null) {
+                return Response::html('Not found', 404);
+            }
+            $mime = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'][pathinfo($path, PATHINFO_EXTENSION)] ?? 'application/octet-stream';
+            return Response::file($path, $mime);
+        });
+        $this->router->add('GET', '/admin/products', function () {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            return Response::html($this->view->render('admin/products', [
+                'title' => 'Products',
+                'products' => $this->catalog()->adminProducts(),
+                'categories' => $this->catalog()->categories(false),
+                'csrf' => $this->csrf->field(),
+                'error' => '',
+                'user' => $this->auth->user(),
+            ]));
+        });
+        $this->router->add('POST', '/admin/products', function (Request $request) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $actor = $this->auth->user();
+            try {
+                $this->catalog()->createDraft(
+                    $request->intPost('category_id'),
+                    $request->post('type'),
+                    trim($request->post('name')),
+                    trim($request->post('slug')),
+                    trim($request->post('summary')),
+                    trim($request->post('description')),
+                    trim($request->post('sku')),
+                    trim($request->post('variant_title', 'Standard')),
+                    $request->intPost('price_minor'),
+                    $request->intPost('on_hand'),
+                    $actor['id'] ?? null,
+                );
+            } catch (\Throwable $e) {
+                return Response::html($this->view->render('admin/products', [
+                    'title' => 'Products',
+                    'products' => $this->catalog()->adminProducts(),
+                    'categories' => $this->catalog()->categories(false),
+                    'csrf' => $this->csrf->field(),
+                    'error' => $e->getMessage(),
+                    'user' => $actor,
+                ]), 422);
+            }
+            return Response::redirect('/admin/products');
+        });
+        $this->router->add('POST', '#^/admin/products/(\d+)/(submit|publish|reject|archive)$#', function (Request $request, array $m) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $id = (int) $m[1];
+            $actor = $this->auth->user()['id'] ?? null;
+            $catalog = $this->catalog();
+            try {
+                match ($m[2]) {
+                    'submit' => $catalog->submitForReview($id, $actor),
+                    'publish' => $catalog->publish($id, $actor),
+                    'reject' => $catalog->reject($id, $request->post('note', 'Rejected'), $actor),
+                    'archive' => $catalog->archive($id, $actor),
+                };
+            } catch (\Throwable $e) {
+                return Response::html($e->getMessage(), 422);
+            }
+            return Response::redirect('/admin/products');
+        });
+        $this->router->add('POST', '#^/admin/products/(\d+)/image$#', function (Request $request, array $m) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            try {
+                $this->images()->store((int) $m[1], $request->file('image'), $this->auth->user()['id'] ?? null);
+            } catch (\Throwable $e) {
+                return Response::html($e->getMessage(), 422);
+            }
+            return Response::redirect('/admin/products');
+        });
+        $this->router->add('POST', '#^/admin/products/(\d+)/stock$#', function (Request $request, array $m) {
+            if ($deny = $this->requireAdmin()) {
+                return $deny;
+            }
+            if (!$this->csrf->assert($request)) {
+                return Response::html('Invalid form', 400);
+            }
+            $variants = $this->catalog()->variants((int) $m[1]);
+            if ($variants === []) {
+                return Response::html('No variant', 422);
+            }
+            $delta = $request->intPost('delta');
+            $ref = $request->post('reference', 'manual:' . bin2hex(random_bytes(4)));
+            try {
+                $this->catalog()->applyMovement((int) $variants[0]['id'], $delta, 0, 'adjust', $ref);
+            } catch (\Throwable $e) {
+                return Response::html($e->getMessage(), 422);
+            }
+            return Response::redirect('/admin/products');
+        });
     }
 }

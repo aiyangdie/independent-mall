@@ -11,6 +11,7 @@ final class Request
      * @param array<string, string> $body
      * @param array<string, string> $cookies
      * @param array<string, string> $server
+     * @param array<string, mixed> $files
      */
     public function __construct(
         private string $method,
@@ -19,6 +20,7 @@ final class Request
         private array $body,
         private array $cookies,
         private array $server,
+        private array $files = [],
     ) {
     }
 
@@ -60,6 +62,7 @@ final class Request
             $body,
             $cookies,
             $server,
+            is_array($_FILES) ? $_FILES : [],
         );
     }
 
@@ -76,6 +79,26 @@ final class Request
     public function post(string $key, string $default = ''): string
     {
         return $this->body[$key] ?? $default;
+    }
+
+    public function query(string $key, string $default = ''): string
+    {
+        return $this->query[$key] ?? $default;
+    }
+
+    public function intPost(string $key, int $default = 0): int
+    {
+        $v = $this->post($key, '');
+        return $v === '' ? $default : (int) $v;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function file(string $key): array
+    {
+        $f = $this->files[$key] ?? [];
+        return is_array($f) ? $f : [];
     }
 
     public function ip(): string

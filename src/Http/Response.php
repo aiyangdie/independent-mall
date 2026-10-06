@@ -30,9 +30,17 @@ final class Response
         );
     }
 
-    public static function redirect(string $to, int $status = 302): self
+    public static function file(string $path, string $mime): self
     {
-        return new self('', $status, ['Location' => $to]);
+        $body = file_get_contents($path);
+        if ($body === false) {
+            return self::html('Not found', 404);
+        }
+        return new self($body, 200, [
+            'Content-Type' => $mime,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     public function send(): void

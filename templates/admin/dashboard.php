@@ -10,6 +10,7 @@ ob_start();
         <div><dt>Database</dt><dd><?= $e($health['database'] ?? '') ?></dd></div>
         <div><dt>PHP</dt><dd><?= $e($health['php'] ?? '') ?></dd></div>
     </dl>
+    <p><a href="/admin/products">Manage products</a></p>
     <form method="post" action="/admin/logout">
         <?= $csrf ?>
         <button type="submit">Sign out</button>

@@ -23,7 +23,11 @@ main { width: min(960px, calc(100% - 2rem)); margin: 2rem auto; flex: 1; }
 .narrow { max-width: 28rem; }
 label { display: block; margin: 0.75rem 0; }
 input { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #b7b0a4; }
-button { background: var(--accent); color: #fff; border: 0; padding: 0.6rem 1rem; cursor: pointer; }
+select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #b7b0a4; }
+textarea { width: 100%; min-height: 6rem; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #b7b0a4; }
+table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; background: var(--card); }
+th, td { border: 1px solid #d9d3c7; padding: 0.5rem; vertical-align: top; text-align: left; }
+td form { display: inline-block; margin: 0.15rem 0.15rem 0 0; }
 .alert { color: var(--danger); }
 .muted { color: var(--muted); font-size: 0.9rem; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
