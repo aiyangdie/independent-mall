@@ -235,11 +235,66 @@ final class Kernel
             'edition' => 'community',
             'license_required' => false,
             'network_required' => false,
+            'license' => $this->healthLicense(),
             'php' => PHP_VERSION,
             'database' => $db,
             'installed' => (new Installer($this->config->root()))->isInstalled(),
             'modules' => count($this->modules()->modules()),
             'module_faults' => count($this->modules()->faults()),
+        ];
+    }
+
+    /**
+     * Public health summary of the optional offline license file. Never includes tokens, nonces, or key material.
+     *
+     * @return array<string, mixed>
+     */
+    private function healthLicense(): array
+    {
+        $root = $this->config->root();
+        $doc = $root . '/var/license.json';
+        $pub = is_file($root . '/var/license-public.pem')
+            ? $root . '/var/license-public.pem'
+            : $root . '/config/license-public.pem';
+        if (!is_file($doc) || !is_file($pub)) {
+            return [
+                'mode' => 'absent',
+                'valid' => false,
+                'product_code' => null,
+                'entitlements' => [],
+            ];
+        }
+        $gate = FileLicenseGate::fromRoot($root);
+        if (!$gate instanceof FileLicenseGate) {
+            return [
+                'mode' => 'offline_file',
+                'valid' => false,
+                'product_code' => null,
+                'entitlements' => [],
+            ];
+        }
+        $payload = $gate->payload();
+        if ($payload === null) {
+            return [
+                'mode' => 'offline_file',
+                'valid' => false,
+                'product_code' => null,
+                'entitlements' => [],
+            ];
+        }
+        $ents = $payload['entitlements'] ?? [];
+        $ents = is_array($ents) ? array_values(array_map('strval', $ents)) : [];
+        $valid = false;
+        if (empty($payload['revoked'])) {
+            $valid = $ents === [] ? true : $gate->allows($ents);
+        }
+
+        return [
+            'mode' => 'offline_file',
+            'valid' => $valid,
+            'product_code' => (string) ($payload['product_code'] ?? ''),
+            'entitlements' => $ents,
+            'revoked' => !empty($payload['revoked']),
         ];
     }
 

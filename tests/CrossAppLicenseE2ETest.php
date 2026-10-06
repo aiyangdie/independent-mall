@@ -244,6 +244,12 @@ final class CrossAppLicenseE2ETest extends TestCase
         $this->assertFalse($health['license_required']);
         $this->assertFalse($health['network_required']);
         $this->assertSame('ok', $health['status'] ?? null);
+        $this->assertSame('offline_file', $health['license']['mode'] ?? null);
+        $this->assertTrue($health['license']['valid'] ?? false);
+        $this->assertSame('sample-notice', $health['license']['product_code'] ?? null);
+        $this->assertContains('storefront_notice', $health['license']['entitlements'] ?? []);
+        $this->assertArrayNotHasKey('token', $health);
+        $this->assertArrayNotHasKey('nonce', $health);
         $this->assertStringNotContainsString($secret, json_encode($health) ?: '');
         $this->assertDoesNotLeakSecrets(json_encode($health) ?: '', $privPem);
 

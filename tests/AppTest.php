@@ -72,7 +72,10 @@ final class AppTest extends TestCase
         $this->assertSame('community', $health['edition']);
         $this->assertFalse($health['license_required']);
         $this->assertFalse($health['network_required']);
+        $this->assertSame('absent', $health['license']['mode'] ?? null);
+        $this->assertFalse($health['license']['valid'] ?? true);
         $this->assertSame('ok', $health['database']);
+        $this->assertArrayNotHasKey('token', $health['license']);
     }
 
     public function testCsrfRejectsMismatch(): void

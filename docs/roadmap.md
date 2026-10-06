@@ -12,6 +12,6 @@ Status is only marked done after tests or HTTP checks in that environment.
 | 5 | Installer, deploy/upgrade docs, release checklist | In progress locally: empty-tree install smoke + health/catalog; deploy.md; backup/restore; release:scan. Physical spare / NIC unplug open — `docs/human-acceptance.md` |
 | 6 | Commercial module seam + sample plugin | In progress locally: `/admin/modules` shows product/customer from local license; FileLicenseGate; commercial dir removable (one skip) |
 | 7 | License server | In progress locally: Fake renew orders (`fake_renewed`); `fulfill` / `licenses --customer=`; B2B customers; product catalog; revoke + purge |
-| 8 | Public marketing/account site | In progress locally: cross-app E2E (`CrossAppLicenseE2ETest`: www download → Community import → enable sample-notice + negatives); signed JSON/PEM download; pricing demo path; issuer orders; Fake buy/renew; tickets. Human checklists in `docs/human-acceptance.md`. No production auto-updater or counsel sign-off |
+| 8 | Public marketing/account site | In progress locally: cross-app E2E; `/healthz` offline license summary (`mode`/`valid`, no secrets); signed JSON/PEM; Fake buy/renew; tickets. Human checklists in `docs/human-acceptance.md`. No production auto-updater or counsel sign-off |
 
 Local URLs used in development: `http://127.0.0.1:8090/` (does not bind to the legacy shop on 8080).

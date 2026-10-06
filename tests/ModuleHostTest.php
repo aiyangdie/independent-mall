@@ -137,6 +137,8 @@ final class ModuleHostTest extends TestCase
         $payload = json_decode($health->body(), true);
         $this->assertFalse($payload['license_required']);
         $this->assertFalse($payload['network_required']);
+        $this->assertSame('absent', $payload['license']['mode'] ?? null);
+        $this->assertFalse($payload['license']['valid'] ?? true);
     }
 
     public function testKernelEnablesSampleNoticeFromSignedLocalLicense(): void
@@ -222,6 +224,11 @@ final class ModuleHostTest extends TestCase
         $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
         $this->assertFalse($health['license_required']);
         $this->assertFalse($health['network_required']);
+        $this->assertSame('offline_file', $health['license']['mode'] ?? null);
+        $this->assertTrue($health['license']['valid'] ?? false);
+        $this->assertContains('storefront_notice', $health['license']['entitlements'] ?? []);
+        $this->assertArrayNotHasKey('token', $health);
+        $this->assertArrayNotHasKey('nonce', $health);
 
         $revoked = Signer::sign([
             'license_id' => 'lic_kernel',
