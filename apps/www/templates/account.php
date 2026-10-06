@@ -11,7 +11,7 @@ $flash = $e((string) ($data['flash'] ?? ''));
 <p><a href="/account/updates">Check updates (verify only, do not apply)</a></p>
 
 <h2>Fake purchase</h2>
-<p>Records a completed Fake order and issues a signed license. This is not a real charge.</p>
+<p>Records a completed Fake order and issues a signed license from the catalog product <code>sample-notice@1.0.0</code>. This is not a real charge.</p>
 <form method="post" action="/account/buy"><?= $csrf->field() ?><button type="submit">Buy sample notice (Fake)</button></form>
 
 <h2>Orders</h2>
@@ -26,6 +26,9 @@ $flash = $e((string) ($data['flash'] ?? ''));
 <?php foreach ($data['licenses'] as $row): ?>
     <li><code><?= $e((string) $row['license_id']) ?></code>
         status <strong><?= $e((string) ($row['status'] ?? 'unknown')) ?></strong>
+        <?php if (($row['product_code'] ?? '') !== ''): ?>
+            · product <code><?= $e((string) $row['product_code']) ?>@<?= $e((string) ($row['product_version'] ?? '')) ?></code>
+        <?php endif; ?>
         <?php if (!empty($row['revoked'])): ?>
             (commercial modules off; Community checkout unaffected)
         <?php elseif (!empty($row['bound'])): ?>

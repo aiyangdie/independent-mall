@@ -14,6 +14,9 @@ use PDO;
 
 final class Hub
 {
+    public const DEMO_PRODUCT = 'sample-notice';
+    public const DEMO_VERSION = '1.0.0';
+
     public const FILES = [
         'sample-notice' => 'sample-notice.txt',
         'community-notes' => 'community-0.1.0-dev.txt',
@@ -134,11 +137,13 @@ final class Hub
 
     /**
      * Fake commercial SKU only. Does not talk to a card network.
+     * Issues via the license-server product catalog (sample-notice@1.0.0).
      *
-     * @return array{order_id:int,license_id:string,token:string,nonce:string}
+     * @return array{order_id:int,license_id:string,token:string,nonce:string,product_code:string,product_version:string}
      */
     public function fakeBuyNotice(int $userId): array
     {
+        $this->ensureDemoCatalog();
         $this->pdo->prepare(
             'INSERT INTO orders (user_id, sku, amount_minor, status, adapter, created_at)
              VALUES (:u, :s, :a, :st, :ad, :t)'
@@ -153,14 +158,24 @@ final class Hub
         $orderId = (int) $this->pdo->lastInsertId();
         $licenseId = 'lic_' . bin2hex(random_bytes(6));
         $token = bin2hex(random_bytes(16));
-        $nonce = $this->store->issue($licenseId, $token, ['storefront_notice'], gmdate('c', time() + 86400 * 365));
+        $expires = gmdate('c', time() + 86400 * 365);
+        $nonce = $this->store->issueForProduct(
+            $licenseId,
+            $token,
+            self::DEMO_PRODUCT,
+            self::DEMO_VERSION,
+            $expires,
+        );
+        $status = $this->store->status($licenseId);
         $payload = [
             'license_id' => $licenseId,
             'instance_id' => '',
-            'entitlements' => ['storefront_notice'],
+            'entitlements' => $status['entitlements'],
+            'product_code' => (string) $status['product_code'],
+            'product_version' => (string) $status['product_version'],
             'issued_at' => gmdate('c'),
             'last_refresh_at' => gmdate('c'),
-            'expires_at' => gmdate('c', time() + 86400 * 365),
+            'expires_at' => $expires,
             'grace_days' => 14,
             'revoked' => false,
         ];
@@ -175,8 +190,20 @@ final class Hub
             'd' => json_encode($doc, JSON_UNESCAPED_SLASHES),
             't' => gmdate('c'),
         ]);
-        $this->log($userId, 'fake_buy', ['order_id' => $orderId, 'license_id' => $licenseId]);
-        return ['order_id' => $orderId, 'license_id' => $licenseId, 'token' => $token, 'nonce' => $nonce];
+        $this->log($userId, 'fake_buy', [
+            'order_id' => $orderId,
+            'license_id' => $licenseId,
+            'product_code' => self::DEMO_PRODUCT,
+            'product_version' => self::DEMO_VERSION,
+        ]);
+        return [
+            'order_id' => $orderId,
+            'license_id' => $licenseId,
+            'token' => $token,
+            'nonce' => $nonce,
+            'product_code' => self::DEMO_PRODUCT,
+            'product_version' => self::DEMO_VERSION,
+        ];
     }
 
     /**
@@ -205,6 +232,8 @@ final class Hub
             $row['bound'] = $instance !== '';
             $row['revoked'] = !empty($payload['revoked']);
             $row['expires_at'] = (string) ($payload['expires_at'] ?? '');
+            $row['product_code'] = (string) ($payload['product_code'] ?? '');
+            $row['product_version'] = (string) ($payload['product_version'] ?? '');
             $row['status'] = !empty($payload['revoked']) ? 'revoked' : ($instance !== '' ? 'bound' : 'unbound');
         }
         unset($row);
@@ -651,6 +680,42 @@ final class Hub
     public function publicPem(): string
     {
         return $this->publicPem;
+    }
+
+    /**
+     * Ensures the demo commercial SKU exists in the shared license Store catalog.
+     */
+    private function ensureDemoCatalog(): void
+    {
+        $hasProduct = false;
+        $hasVersion = false;
+        foreach ($this->store->catalog() as $product) {
+            if (($product['code'] ?? '') !== self::DEMO_PRODUCT) {
+                continue;
+            }
+            $hasProduct = true;
+            foreach ($product['versions'] as $ver) {
+                if (($ver['version'] ?? '') === self::DEMO_VERSION) {
+                    $hasVersion = true;
+                    break;
+                }
+            }
+            break;
+        }
+        if (!$hasProduct) {
+            $this->store->registerProduct(
+                self::DEMO_PRODUCT,
+                'Sample notice module',
+                ['storefront_notice'],
+            );
+        }
+        if (!$hasVersion) {
+            $this->store->registerVersion(
+                self::DEMO_PRODUCT,
+                self::DEMO_VERSION,
+                'Demo commercial module for Fake purchases',
+            );
+        }
     }
 
     private function assertOwns(int $userId, string $licenseId, string $token): void

@@ -184,7 +184,11 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $bought = $this->hub->fakeBuyNotice($uid);
-        $_SESSION['www_flash'] = 'Fake payment recorded. License ' . $bought['license_id'] . ' token (shown once): ' . $bought['token'] . ' nonce (shown once): ' . $bought['nonce'];
+        $_SESSION['www_flash'] = 'Fake payment recorded. Product '
+            . $bought['product_code'] . '@' . $bought['product_version']
+            . '. License ' . $bought['license_id']
+            . ' token (shown once): ' . $bought['token']
+            . ' nonce (shown once): ' . $bought['nonce'];
         return Response::redirect('/account');
     }
 

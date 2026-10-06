@@ -9,6 +9,6 @@
 </p>
 <ul>
     <li>Community Edition: no license fee in this repository.</li>
-    <li>Sample notice module: 99.00 display / 9900 minor units via the Fake adapter only.</li>
+    <li>Sample notice module (<code>sample-notice@1.0.0</code>): 99.00 display / 9900 minor units via the Fake adapter only; issued through the license-server product catalog.</li>
 </ul>
 <p><a class="btn" href="/register">Open a demo account</a> <a class="btn ghost" href="/legal/disclaimer">Read the disclaimer draft</a></p>

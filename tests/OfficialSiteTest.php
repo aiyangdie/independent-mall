@@ -139,12 +139,19 @@ final class OfficialSiteTest extends TestCase
         $account = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertSame(200, $account->status());
         $this->assertStringContainsString('fake_completed', $account->body());
+        $this->assertStringContainsString('sample-notice@1.0.0', $account->body());
+        $this->assertStringContainsString('product <code>sample-notice@1.0.0</code>', $account->body());
         $this->assertMatchesRegularExpression('/lic_[a-f0-9]+/', $account->body());
         preg_match('/License (lic_[a-f0-9]+) token \(shown once\): ([a-f0-9]+) nonce \(shown once\): ([a-f0-9]+)/', $account->body(), $m);
         $this->assertNotEmpty($m);
         $licenseId = $m[1];
         $secret = $m[2];
         $nonce = $m[3];
+        $docsBuy = $this->hub->licenses((int) $_SESSION['www_user']);
+        $this->assertSame('sample-notice', $docsBuy[0]['product_code'] ?? null);
+        $this->assertSame('1.0.0', $docsBuy[0]['product_version'] ?? null);
+        $envBuy = json_decode((string) $docsBuy[0]['document'], true);
+        $this->assertSame('sample-notice', $envBuy['payload']['product_code'] ?? null);
 
         $this->site->handle(new Request('POST', '/account/activate', [], [
             '_csrf' => $token,
