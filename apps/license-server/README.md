@@ -6,10 +6,12 @@ This OpenSSL build exposes Ed25519 as `OPENSSL_KEYTYPE_ED25519`. If that constan
 cd apps\license-server
 composer install --no-dev
 php bin/license keys
+php bin/license customer --id=cust_demo --email=ops@example.invalid --note="Demo B2B contact"
+php bin/license customers
 php bin/license product --code=sample-notice --name="Sample notice" --entitlements=storefront_notice
 php bin/license version --product=sample-notice --version=1.0.0 --notes="Demo commercial module"
 php bin/license products
-php bin/license issue --id=lic_demo --product=sample-notice --version=1.0.0 --days=365
+php bin/license issue --id=lic_demo --product=sample-notice --version=1.0.0 --customer=cust_demo --days=365
 php bin/license offline --id=lic_demo --token=TOKEN --nonce=NONCE --instance=shop-1 --out=license.json
 php bin/license revoke --id=lic_demo --token=TOKEN --out=revoked.json
 php bin/license renew --id=lic_demo --token=TOKEN --days=365 --out=renewed.json
@@ -22,7 +24,7 @@ If Composer was already run at the Community tree root, `bootstrap.php` reuses t
 
 Copy `var/public.pem` to the shop as `var/license-public.pem`. Copy the signed JSON to `var/license.json`. Keep `var/private.pem` only on this host.
 
-Register products and versions before catalog-based issue (`product` / `version` / `products` CLI, or `GET /products`). `issue --product= --version=` copies entitlements from the product row onto the license and records `product_code` / `product_version` in status and signed payloads. Free-form `issue --entitlements=` remains for tests and ad-hoc grants.
+Register commercial B2B customers (`customer` / `customers` CLI — issuer contacts only, not Community shoppers). Register products and versions before catalog-based issue (`product` / `version` / `products` CLI, or `GET /products`). `issue --product= --version=` copies entitlements from the product row onto the license and records `product_code` / `product_version` in status and signed payloads. Optional `--customer=` links the license to a registered customer id. Free-form `issue --entitlements=` remains for tests and ad-hoc grants.
 
 `POST /activate` requires `{license_id, token, instance_id, nonce}`. The nonce is single-use and is rotated on unbind (`activation_nonce` in the JSON). `POST /refresh` uses the long-lived token after bind; if the license is revoked it returns a signed document with `"revoked": true` so the shop can store it and turn off commercial modules only. `POST /revoke` with `{license_id, token}` marks the row revoked and returns the same kind of signed document. `POST /renew` with `{license_id, token, expires_at}` extends the paid window (new expiry must be after the current one) and returns a signed document; revoked rows cannot be renewed. `POST /purge` deletes the server row and its audit (after token check). CLI `status --id=` prints a JSON summary with recent audit actions and without token or nonce material. Field list, retention, and what is never collected: [docs/license-server-data.md](../../docs/license-server-data.md). Responses are JSON only. They do not return PHP and do not instruct the shop to execute remote code.
 

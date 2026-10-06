@@ -415,6 +415,53 @@ final class LicenseTest extends TestCase
         }
     }
 
+    public function testCustomerRegistryLinksLicensesAndRejectsUnknown(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $this->assertSame([], $store->customers());
+        $store->registerCustomer('cust_demo', 'ops@example.invalid', 'B2B demo');
+        $store->registerProduct('sample-notice', 'Sample notice module', ['storefront_notice']);
+        $store->registerVersion('sample-notice', '1.0.0', 'v1');
+        try {
+            $store->issueForProduct(
+                'lic_cust',
+                'token-cust-xxxx',
+                'sample-notice',
+                '1.0.0',
+                gmdate('c', time() + 86400),
+                14,
+                'cust_missing',
+            );
+            $this->fail('unknown customer');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('Unknown customer', $e->getMessage());
+        }
+        $nonce = $store->issueForProduct(
+            'lic_cust',
+            'token-cust-xxxx',
+            'sample-notice',
+            '1.0.0',
+            gmdate('c', time() + 86400),
+            14,
+            'cust_demo',
+        );
+        $status = $store->status('lic_cust');
+        $this->assertSame('cust_demo', $status['customer_id']);
+        $list = $store->customers();
+        $this->assertCount(1, $list);
+        $this->assertSame('cust_demo', $list[0]['id']);
+        $this->assertSame('ops@example.invalid', $list[0]['email']);
+        $this->assertSame(1, $list[0]['license_count']);
+        $payload = $store->activate('lic_cust', 'token-cust-xxxx', 'shop-cust-1', $nonce);
+        $this->assertSame('cust_demo', $payload['customer_id']);
+        $encoded = json_encode($list);
+        $this->assertIsString($encoded);
+        $this->assertStringNotContainsString('token-cust-xxxx', $encoded);
+        $this->assertStringNotContainsString($nonce, $encoded);
+    }
+
     public function testRenewExtendsExpiryAndRejectsRevokedOrShorter(): void
     {
         $pdo = new \PDO('sqlite::memory:');
@@ -491,6 +538,7 @@ final class LicenseTest extends TestCase
         $dataDoc = (string) file_get_contents($this->root() . '/docs/license-server-data.md');
         $this->assertStringContainsString('token_hash', $dataDoc);
         $this->assertStringContainsString('product_code', $dataDoc);
+        $this->assertStringContainsString('customer_id', $dataDoc);
         $this->assertStringContainsString('Not collected', $dataDoc);
         $this->assertStringContainsString('purge', $dataDoc);
         $this->assertStringNotContainsString('eval(', $http);

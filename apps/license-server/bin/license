@@ -31,6 +31,38 @@ if ($command === 'keys') {
     exit(0);
 }
 
+if ($command === 'customer') {
+    $id = '';
+    $email = '';
+    $note = '';
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--id=')) {
+            $id = substr($arg, 5);
+        } elseif (str_starts_with($arg, '--email=')) {
+            $email = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--note=')) {
+            $note = substr($arg, 7);
+        }
+    }
+    if ($id === '' || $email === '') {
+        fwrite(STDERR, "Usage: php bin/license customer --id=cust_demo --email=ops@example.invalid [--note=text]\n");
+        exit(1);
+    }
+    try {
+        $store->registerCustomer($id, $email, $note);
+        echo "Registered customer {$id}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
+if ($command === 'customers') {
+    echo json_encode($store->customers(), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), "\n";
+    exit(0);
+}
+
 if ($command === 'product') {
     $code = '';
     $name = '';
@@ -97,6 +129,7 @@ if ($command === 'issue') {
     $days = 365;
     $product = '';
     $version = '';
+    $customer = '';
     foreach (array_slice($argv, 2) as $arg) {
         if (str_starts_with($arg, '--id=')) {
             $id = substr($arg, 5);
@@ -108,18 +141,20 @@ if ($command === 'issue') {
             $product = substr($arg, 10);
         } elseif (str_starts_with($arg, '--version=')) {
             $version = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--customer=')) {
+            $customer = substr($arg, 11);
         }
     }
     if ($id === '') {
-        fwrite(STDERR, "Usage: php bin/license issue --id=lic_1 [--product=sample-notice --version=1.0.0] [--days=365]\n");
+        fwrite(STDERR, "Usage: php bin/license issue --id=lic_1 [--product=sample-notice --version=1.0.0] [--customer=cust_demo] [--days=365]\n");
         exit(1);
     }
     try {
         $expires = gmdate('c', time() + $days * 86400);
         if ($product !== '') {
-            $nonce = $store->issueForProduct($id, $token, $product, $version, $expires);
+            $nonce = $store->issueForProduct($id, $token, $product, $version, $expires, 14, $customer);
         } else {
-            $nonce = $store->issue($id, $token, $ents, $expires);
+            $nonce = $store->issue($id, $token, $ents, $expires, 14, '', '', $customer);
         }
         echo "Issued {$id}. Token (keep for refresh/unbind): {$token}\nActivation nonce (shown once): {$nonce}\n";
     } catch (Throwable $e) {
@@ -282,5 +317,5 @@ if ($command === 'status') {
     exit(0);
 }
 
-echo "Usage: php bin/license [keys|product|version|products|issue|offline|revoke|renew|purge|status]\n";
+echo "Usage: php bin/license [keys|customer|customers|product|version|products|issue|offline|revoke|renew|purge|status]\n";
 exit(1);

@@ -49,8 +49,17 @@ final class Store
                 PRIMARY KEY (product_code, version)
             )'
         );
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS customers (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL UNIQUE,
+                note TEXT NOT NULL DEFAULT \'\',
+                created_at TEXT NOT NULL
+            )'
+        );
         $this->ensureNonceColumn();
         $this->ensureLicenseProductColumns();
+        $this->ensureLicenseCustomerColumn();
     }
 
     /**
@@ -134,6 +143,52 @@ final class Store
         return $out;
     }
 
+    public function registerCustomer(string $id, string $email, string $note = ''): void
+    {
+        $id = $this->requireCustomerId($id);
+        $email = strtolower(trim($email));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException('Customer email is not acceptable.');
+        }
+        $note = trim($note);
+        if (strlen($note) > 500) {
+            throw new \InvalidArgumentException('Customer note is too long.');
+        }
+        $this->pdo->prepare(
+            'INSERT INTO customers (id, email, note, created_at) VALUES (:i, :e, :n, :t)'
+        )->execute([
+            'i' => $id,
+            'e' => $email,
+            'n' => $note,
+            't' => gmdate('c'),
+        ]);
+    }
+
+    /**
+     * Commercial B2B contacts for this issuer only — not Community shop shoppers.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function customers(): array
+    {
+        $rows = $this->pdo->query(
+            'SELECT id, email, note, created_at FROM customers ORDER BY id'
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $out = [];
+        foreach ($rows as $row) {
+            $countStmt = $this->pdo->prepare('SELECT COUNT(*) FROM licenses WHERE customer_id = :c');
+            $countStmt->execute(['c' => $row['id']]);
+            $out[] = [
+                'id' => (string) $row['id'],
+                'email' => (string) $row['email'],
+                'note' => (string) $row['note'],
+                'license_count' => (int) $countStmt->fetchColumn(),
+                'created_at' => (string) $row['created_at'],
+            ];
+        }
+        return $out;
+    }
+
     /**
      * Issue a license from a registered product + version. Entitlements come from the product row.
      *
@@ -146,6 +201,7 @@ final class Store
         string $productVersion,
         string $expiresAt,
         int $graceDays = 14,
+        string $customerId = '',
     ): string {
         $productCode = $this->requireProductCode($productCode);
         $productVersion = $this->requireVersion($productVersion);
@@ -166,7 +222,16 @@ final class Store
         if (!is_array($ents)) {
             throw new \DomainException('Product entitlements are corrupt.');
         }
-        return $this->issue($id, $token, array_values(array_map('strval', $ents)), $expiresAt, $graceDays, $productCode, $productVersion);
+        return $this->issue(
+            $id,
+            $token,
+            array_values(array_map('strval', $ents)),
+            $expiresAt,
+            $graceDays,
+            $productCode,
+            $productVersion,
+            $customerId,
+        );
     }
 
     /**
@@ -181,6 +246,7 @@ final class Store
         int $graceDays = 14,
         string $productCode = '',
         string $productVersion = '',
+        string $customerId = '',
     ): string {
         $ents = $this->normalizeEntitlements($entitlements);
         if ($ents === []) {
@@ -192,11 +258,19 @@ final class Store
         } else {
             $productVersion = '';
         }
+        if ($customerId !== '') {
+            $customerId = $this->requireCustomerId($customerId);
+            $cstmt = $this->pdo->prepare('SELECT 1 FROM customers WHERE id = :i');
+            $cstmt->execute(['i' => $customerId]);
+            if (!$cstmt->fetchColumn()) {
+                throw new \DomainException('Unknown customer.');
+            }
+        }
         $now = gmdate('c');
         $nonce = bin2hex(random_bytes(16));
         $this->pdo->prepare(
-            'INSERT INTO licenses (id, token_hash, entitlements, expires_at, grace_days, activation_nonce_hash, product_code, product_version, created_at)
-             VALUES (:i, :h, :e, :x, :g, :n, :pc, :pv, :c)'
+            'INSERT INTO licenses (id, token_hash, entitlements, expires_at, grace_days, activation_nonce_hash, product_code, product_version, customer_id, created_at)
+             VALUES (:i, :h, :e, :x, :g, :n, :pc, :pv, :cu, :c)'
         )->execute([
             'i' => $id,
             'h' => hash('sha256', $token),
@@ -206,12 +280,14 @@ final class Store
             'n' => hash('sha256', $nonce),
             'pc' => $productCode,
             'pv' => $productVersion,
+            'cu' => $customerId,
             'c' => $now,
         ]);
         $this->audit($id, 'issue', [
             'entitlements' => $ents,
             'product_code' => $productCode,
             'product_version' => $productVersion,
+            'customer_id' => $customerId,
         ]);
         return $nonce;
     }
@@ -371,6 +447,7 @@ final class Store
             'entitlements' => is_array($ents) ? array_values(array_map('strval', $ents)) : [],
             'product_code' => (string) ($row['product_code'] ?? ''),
             'product_version' => (string) ($row['product_version'] ?? ''),
+            'customer_id' => (string) ($row['customer_id'] ?? ''),
             'created_at' => (string) $row['created_at'],
             'has_activation_nonce' => (string) ($row['activation_nonce_hash'] ?? '') !== '',
             'recent_audit' => $recent,
@@ -423,6 +500,7 @@ final class Store
             'entitlements' => is_array($ents) ? $ents : [],
             'product_code' => (string) ($row['product_code'] ?? ''),
             'product_version' => (string) ($row['product_version'] ?? ''),
+            'customer_id' => (string) ($row['customer_id'] ?? ''),
             'issued_at' => (string) $row['created_at'],
             'last_refresh_at' => gmdate('c'),
             'expires_at' => $row['expires_at'],
@@ -447,6 +525,15 @@ final class Store
             throw new \InvalidArgumentException('Product code is not acceptable.');
         }
         return $code;
+    }
+
+    private function requireCustomerId(string $id): string
+    {
+        $id = strtolower(trim($id));
+        if (preg_match('/^[a-z][a-z0-9_-]{1,63}$/', $id) !== 1) {
+            throw new \InvalidArgumentException('Customer id is not acceptable.');
+        }
+        return $id;
     }
 
     private function requireVersion(string $version): string
@@ -497,6 +584,17 @@ final class Store
         }
         if (!in_array('product_version', $names, true)) {
             $this->pdo->exec("ALTER TABLE licenses ADD COLUMN product_version TEXT NOT NULL DEFAULT ''");
+        }
+    }
+
+    private function ensureLicenseCustomerColumn(): void
+    {
+        $names = [];
+        foreach ($this->pdo->query('PRAGMA table_info(licenses)') as $col) {
+            $names[] = (string) $col['name'];
+        }
+        if (!in_array('customer_id', $names, true)) {
+            $this->pdo->exec("ALTER TABLE licenses ADD COLUMN customer_id TEXT NOT NULL DEFAULT ''");
         }
     }
 
