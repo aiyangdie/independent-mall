@@ -205,6 +205,10 @@ final class ModuleHostTest extends TestCase
         $this->assertSame('lic_kernel', $audit['entity_id']);
         $this->assertStringContainsString('shop-test', (string) $audit['meta']);
         $this->assertStringNotContainsString($pair['private'], (string) $audit['meta']);
+        $filtered = $kernel->handle(new Request('GET', '/admin/audit', ['action' => 'license.'], [], [], []));
+        $this->assertSame(200, $filtered->status());
+        $this->assertStringContainsString('license.store', $filtered->body());
+        $this->assertStringContainsString('name="action"', $filtered->body());
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertSame(200, $home->status());
         $this->assertStringContainsString('Sample commercial notice', $home->body());

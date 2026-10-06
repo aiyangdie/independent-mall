@@ -166,6 +166,19 @@ final class OfficialSiteTest extends TestCase
             'nonce' => $n2[1],
             'instance_id' => 'shop-demo-2',
         ], [], []));
+        $boundAgain = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('status <strong>bound</strong>', $boundAgain->body());
+
+        $this->site->handle(new Request('POST', '/account/revoke', [], [
+            '_csrf' => $token,
+            'license_id' => $licenseId,
+            'token' => $secret,
+        ], [], []));
+        $revokedPage = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('status <strong>revoked</strong>', $revokedPage->body());
+        $this->assertStringContainsString('commercial modules off', $revokedPage->body());
+        $docs = $this->hub->licenses((int) $_SESSION['www_user']);
+        $this->assertTrue(!empty($docs[0]['revoked']));
 
         $this->site->handle(new Request('POST', '/account/ticket', [], [
             '_csrf' => $token,

@@ -25,8 +25,14 @@ $flash = $e((string) ($data['flash'] ?? ''));
 <ul>
 <?php foreach ($data['licenses'] as $row): ?>
     <li><code><?= $e((string) $row['license_id']) ?></code>
-        <?php if (!empty($row['bound'])): ?> bound to <code><?= $e((string) $row['instance_id']) ?></code>
-        <?php else: ?> unbound<?php endif; ?></li>
+        status <strong><?= $e((string) ($row['status'] ?? 'unknown')) ?></strong>
+        <?php if (!empty($row['revoked'])): ?>
+            (commercial modules off; Community checkout unaffected)
+        <?php elseif (!empty($row['bound'])): ?>
+            · bound to <code><?= $e((string) $row['instance_id']) ?></code>
+        <?php else: ?>
+            · not bound to an instance
+        <?php endif; ?></li>
 <?php endforeach; ?>
 </ul>
 <form method="post" action="/account/activate">
@@ -42,6 +48,12 @@ $flash = $e((string) ($data['flash'] ?? ''));
     <label>License id <input name="license_id" required></label>
     <label>Token <input name="token" required></label>
     <button type="submit">Unbind</button>
+</form>
+<form method="post" action="/account/revoke">
+    <?= $csrf->field() ?>
+    <label>License id <input name="license_id" required></label>
+    <label>Token <input name="token" required></label>
+    <button type="submit">Mark revoked (demo)</button>
 </form>
 
 <h2>Downloads (10-minute HMAC links)</h2>

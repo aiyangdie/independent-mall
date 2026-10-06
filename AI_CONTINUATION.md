@@ -37,7 +37,8 @@
 - 阶段 4：前台与后台主流程页面（真机窄屏目视仍开放）。
 - 阶段 5 进行中：安装器、deploy.md、运维文档（本机 loopback `/healthz` `network_required=false`；未做网线拔除与备用机安装）。
 - 阶段 6 进行中：模块宿主、`FileLicenseGate`、示例插件；无本地签名文件则无法启用。
-- 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；激活 nonce；吊销/purge；字段清单见 docs/license-server-data.md。
+- 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；激活 nonce；吊销/purge；后台审计可筛 `license.`。
+- 阶段 8 进行中：官网账户中心可显示 bound/revoked；Fake 购买与验签更新检查仍为演示。
 - 已知提交以 `git log` 为准。测试基线随 PHPUnit 输出更新。
 - 社区版不得依赖授权服务器才能启动、登录、浏览或下单。
 

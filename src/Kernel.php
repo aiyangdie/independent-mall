@@ -529,14 +529,27 @@ final class Kernel
                 'user' => $this->auth->user(),
             ]);
         });
-        $this->router->add('GET', '/admin/audit', function () {
+        $this->router->add('GET', '/admin/audit', function (Request $request) {
             if ($deny = $this->requireAdmin()) {
                 return $deny;
             }
-            $rows = $this->pdo->query('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100')->fetchAll() ?: [];
+            $prefix = trim($request->query('action'));
+            try {
+                $rows = (new AuditLogger($this->pdo))->recent(100, $prefix);
+            } catch (\InvalidArgumentException $e) {
+                return $this->page('admin/audit', [
+                    'title' => 'Audit log',
+                    'rows' => [],
+                    'action_filter' => $prefix,
+                    'error' => $e->getMessage(),
+                    'user' => $this->auth->user(),
+                ], 422);
+            }
             return $this->page('admin/audit', [
                 'title' => 'Audit log',
                 'rows' => $rows,
+                'action_filter' => $prefix,
+                'error' => '',
                 'user' => $this->auth->user(),
             ]);
         });

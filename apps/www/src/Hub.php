@@ -186,9 +186,27 @@ final class Hub
             $instance = (string) ($payload['instance_id'] ?? '');
             $row['instance_id'] = $instance;
             $row['bound'] = $instance !== '';
+            $row['revoked'] = !empty($payload['revoked']);
+            $row['status'] = !empty($payload['revoked']) ? 'revoked' : ($instance !== '' ? 'bound' : 'unbound');
         }
         unset($row);
         return $rows;
+    }
+
+    /**
+     * Operator/demo revoke: mark server row revoked and replace the account document.
+     *
+     * @return array<string, mixed>
+     */
+    public function revoke(int $userId, string $licenseId, string $token): array
+    {
+        $this->assertOwns($userId, $licenseId, $token);
+        $payload = $this->store->revokeIfAuthorized($licenseId, $token);
+        $doc = Signer::sign($payload, $this->privatePem);
+        $this->pdo->prepare('UPDATE account_licenses SET document = :d WHERE user_id = :u AND license_id = :l')
+            ->execute(['d' => json_encode($doc, JSON_UNESCAPED_SLASHES), 'u' => $userId, 'l' => $licenseId]);
+        $this->log($userId, 'revoke', ['license_id' => $licenseId]);
+        return $doc;
     }
 
     /**

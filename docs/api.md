@@ -18,6 +18,7 @@ All state-changing POST bodies require `_csrf`. JSON health check is unauthentic
 | GET | `/orders/{id}/result` | customer payment result |
 | GET | `/deliveries/{token}` | bearer of hashed token |
 | GET/POST | `/admin/login` `/admin/products` `/admin/skus` `/admin/categories` `/admin/orders` `/admin/payments` `/admin/refunds` `/admin/customers` `/admin/modules` `/admin/rules` `/admin/settings` `/admin/audit` | administrator |
+| GET | `/admin/audit?action=license.` | administrator; optional action prefix filter |
 | POST | `/admin/license` | administrator; stores a locally verified signed document |
 | POST | `/admin/license/refresh` | administrator; optional HTTP refresh; storefront never calls this |
 

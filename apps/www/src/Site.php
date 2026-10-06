@@ -88,6 +88,7 @@ final class Site
                 $method === 'POST' && $path === '/account/buy' => $this->buy($request),
                 $method === 'POST' && $path === '/account/activate' => $this->activate($request),
                 $method === 'POST' && $path === '/account/unbind' => $this->unbind($request),
+                $method === 'POST' && $path === '/account/revoke' => $this->revoke($request),
                 $method === 'POST' && $path === '/account/ticket' => $this->ticket($request),
                 $method === 'GET' && $path === '/account/download' => $this->download($request),
                 default => $this->page('not-found', ['title' => 'Not found'], 404),
@@ -201,6 +202,14 @@ final class Site
         $uid = $this->requireUser($request);
         $next = $this->hub->unbind($uid, $request->post('license_id'), $request->post('token'));
         $_SESSION['www_flash'] = 'Instance unbound. Next activation nonce (shown once): ' . $next;
+        return Response::redirect('/account');
+    }
+
+    private function revoke(Request $request): Response
+    {
+        $uid = $this->requireUser($request);
+        $this->hub->revoke($uid, $request->post('license_id'), $request->post('token'));
+        $_SESSION['www_flash'] = 'License marked revoked. Commercial modules stay off; Community shops keep selling.';
         return Response::redirect('/account');
     }
 
