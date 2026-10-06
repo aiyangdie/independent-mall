@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace IndependentMall\OfficialSite;
 
 use IndependentMall\Auth\PasswordHasher;
+use IndependentMall\License\CanonicalJson;
+use IndependentMall\License\OpenSslEd25519;
 use IndependentMall\LicenseServer\Signer;
 use IndependentMall\LicenseServer\Store;
 use PDO;
@@ -14,6 +16,7 @@ final class Hub
     public const FILES = [
         'sample-notice' => 'sample-notice.txt',
         'community-notes' => 'community-0.1.0-dev.txt',
+        'community-0.1.1' => 'community-0.1.1.txt',
     ];
 
     public function __construct(
@@ -268,25 +271,52 @@ final class Hub
     }
 
     /**
+     * @return list<array<string, mixed>>
+     */
+    public function downloadAudits(int $userId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM download_audit WHERE user_id = :u ORDER BY id DESC LIMIT 50');
+        $stmt->execute(['u' => $userId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function updates(): array
     {
-        $path = $this->filesDir . '/' . self::FILES['community-notes'];
-        $hash = is_file($path) ? hash_file('sha256', $path) : '';
+        $unsignedPath = $this->filesDir . '/' . self::FILES['community-notes'];
+        $signedPath = $this->filesDir . '/' . self::FILES['community-0.1.1'];
+        $unsignedHash = is_file($unsignedPath) ? hash_file('sha256', $unsignedPath) : '';
+        $signedPayload = [
+            'artifact' => 'community-0.1.1',
+            'major' => 0,
+            'migration' => 'None. Notes file only.',
+            'notes' => 'Ed25519 over canonical JSON of the payload without signature fields. Verify SHA-256 before replace.',
+            'php' => '>=8.2',
+            'rollback' => 'SafeApplier restores the backup directory if the write fails.',
+            'sha256' => is_file($signedPath) ? (string) hash_file('sha256', $signedPath) : '',
+            'version' => '0.1.1',
+        ];
+        $signature = base64_encode(OpenSslEd25519::sign(CanonicalJson::encode($signedPayload), $this->privatePem));
         return [
             'channel' => 'community',
             'latest' => [
                 'version' => '0.1.0-dev',
                 'php' => '>=8.2',
                 'artifact' => 'community-notes',
-                'sha256' => $hash,
+                'sha256' => $unsignedHash,
                 'signature' => '',
                 'signed' => false,
                 'migration' => 'None. Development snapshot.',
                 'rollback' => 'Keep the previous directory; do not overwrite until signed packages exist.',
                 'notes' => 'Unsigned development metadata. Clients must refuse automatic install and must not execute unsigned code.',
             ],
+            'signed_release' => $signedPayload + [
+                'signature' => $signature,
+                'signed' => true,
+            ],
+            'update_public_key' => $this->publicPem,
         ];
     }
 

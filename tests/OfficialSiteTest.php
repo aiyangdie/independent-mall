@@ -13,6 +13,8 @@ use IndependentMall\LicenseServer\Store;
 use IndependentMall\OfficialSite\Hub;
 use IndependentMall\OfficialSite\Site;
 use IndependentMall\Tests\Support\FrozenClock;
+use IndependentMall\Update\PackageVerifier;
+use IndependentMall\Update\SafeApplier;
 use PHPUnit\Framework\TestCase;
 
 final class OfficialSiteTest extends TestCase
@@ -54,9 +56,25 @@ final class OfficialSiteTest extends TestCase
         }
         $updates = json_decode($this->site->handle(new Request('GET', '/updates.json', [], [], [], []))->body(), true);
         $this->assertFalse($updates['latest']['signed']);
+        $this->assertTrue($updates['signed_release']['signed']);
+        $this->assertNotSame('', $updates['signed_release']['signature']);
         $this->assertSame(64, strlen((string) $updates['latest']['sha256']));
         $notes = dirname(__DIR__) . '/apps/www/data/files/community-0.1.0-dev.txt';
         $this->assertSame(hash_file('sha256', $notes), $updates['latest']['sha256']);
+        $this->expectException(\DomainException::class);
+        PackageVerifier::assertSafeToApply($updates['latest'], $notes, $this->publicPem, '0.1.0');
+    }
+
+    public function testSignedReleaseFromOfficialSiteApplies(): void
+    {
+        $updates = json_decode($this->site->handle(new Request('GET', '/updates.json', [], [], [], []))->body(), true);
+        $artifact = dirname(__DIR__) . '/apps/www/data/files/community-0.1.1.txt';
+        $install = sys_get_temp_dir() . '/im-site-upd-' . bin2hex(random_bytes(3));
+        mkdir($install, 0775, true);
+        file_put_contents($install . '/NOTES.txt', 'old');
+        file_put_contents($install . '/VERSION', '0.1.0');
+        (new SafeApplier())->apply($install, $artifact, $updates['signed_release'], $updates['update_public_key'], '0.1.0');
+        $this->assertStringContainsString('0.1.1 signed notes', (string) file_get_contents($install . '/NOTES.txt'));
     }
 
     public function testFakeBuyIssueActivateDownloadAndTraversalDenied(): void
@@ -124,6 +142,10 @@ final class OfficialSiteTest extends TestCase
 
         $bad = $this->site->handle(new Request('GET', '/account/download', ['token' => '../sample-notice'], [], [], []));
         $this->assertSame(400, $bad->status());
+        $audited = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('Download audit', $audited->body());
+        $this->assertStringContainsString('allowed', $audited->body());
+        $this->assertStringContainsString('denied', $audited->body());
     }
 
     public function testCommunitySrcDoesNotImportOfficialSite(): void

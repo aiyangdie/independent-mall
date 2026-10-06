@@ -1,0 +1,4 @@
+Independent Mall community 0.1.1 signed notes.
+
+This artifact is text only. Update clients must verify SHA-256 and Ed25519 before replacing NOTES.txt.
+Do not eval or include this file as PHP.

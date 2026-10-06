@@ -32,6 +32,17 @@ final class OpenSslEd25519
         }
     }
 
+    public static function sign(string $payload, string $privatePem): string
+    {
+        self::loadConfig();
+        $key = openssl_pkey_get_private($privatePem);
+        $signature = '';
+        if ($key !== false && openssl_sign($payload, $signature, $key) && $signature !== '') {
+            return $signature;
+        }
+        return self::signViaCli($payload, $privatePem);
+    }
+
     public static function verify(string $payload, string $signature, string $publicPem): bool
     {
         OpenSslEd25519::loadConfig();
@@ -70,6 +81,34 @@ final class OpenSslEd25519
         @unlink($base);
         $text = implode("\n", $out);
         return $code === 0 && str_contains(strtolower($text), 'success');
+    }
+
+    private static function signViaCli(string $payload, string $privatePem): string
+    {
+        $bin = self::opensslBinary();
+        if ($bin === null) {
+            throw new \RuntimeException('Could not sign with Ed25519.');
+        }
+        $base = tempnam(sys_get_temp_dir(), 'ims');
+        $keyFile = $base . '.pem';
+        $inFile = $base . '.in';
+        $sigFile = $base . '.sig';
+        file_put_contents($keyFile, $privatePem);
+        file_put_contents($inFile, $payload);
+        $cmd = escapeshellarg($bin) . ' pkeyutl -sign -inkey ' . escapeshellarg($keyFile)
+            . ' -rawin -in ' . escapeshellarg($inFile) . ' -out ' . escapeshellarg($sigFile);
+        $out = [];
+        $code = 0;
+        exec($cmd . ' 2>&1', $out, $code);
+        $sig = is_file($sigFile) ? (string) file_get_contents($sigFile) : '';
+        @unlink($keyFile);
+        @unlink($inFile);
+        @unlink($sigFile);
+        @unlink($base);
+        if ($code !== 0 || $sig === '') {
+            throw new \RuntimeException('Could not sign with Ed25519. ' . implode(' ', $out));
+        }
+        return $sig;
     }
 
     private static function opensslBinary(): ?string

@@ -47,6 +47,13 @@ $flash = $e((string) ($data['flash'] ?? ''));
 <?php endforeach; ?>
 </ul>
 
+<h2>Download audit</h2>
+<ul>
+<?php foreach ($data['downloads'] as $row): ?>
+    <li><?= $e((string) $row['created_at']) ?> <?= $e((string) $row['file_id']) ?> <?= ((int) $row['ok'] === 1) ? 'allowed' : 'denied' ?></li>
+<?php endforeach; ?>
+</ul>
+
 <h2>Tickets</h2>
 <form method="post" action="/account/ticket">
     <?= $csrf->field() ?>

@@ -8,4 +8,6 @@ Fake purchase in the customer center writes `fake_completed` via the Fake adapte
 
 Download links are HMAC + expiry (10 minutes). File ids are a whitelist; `realpath` must stay under `apps/www/data/files`.
 
-`GET /updates.json` publishes SHA-256 and an empty signature for the development snapshot. Clients must refuse auto-install when `signed` is false.
+`GET /updates.json` includes an unsigned `latest` channel (auto-install forbidden) and a `signed_release` channel. Clients must verify SHA-256 and Ed25519, copy the install tree first, and restore that copy if the write fails. `php bin/console update:apply` is the local demonstration; it does not fetch URLs.
+
+Customer center lists HMAC downloads and a download audit (allowed/denied).

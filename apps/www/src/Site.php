@@ -153,6 +153,7 @@ final class Site
             'tickets' => $this->hub->tickets($uid),
             'security' => $this->hub->securityLog($uid),
             'files' => $files,
+            'downloads' => $this->hub->downloadAudits($uid),
             'flash' => (string) ($_SESSION['www_flash'] ?? ''),
         ]);
     }

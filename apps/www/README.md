@@ -6,4 +6,4 @@ php -S 127.0.0.1:8092 -t public public/index.php
 
 Demo keys for Fake purchases live in `var/` (gitignored). They are not the production license-server keys.
 
-Unsigned `/updates.json` must never trigger automatic file replacement.
+Unsigned `/updates.json` `latest` must never trigger automatic file replacement. Use `signed_release` plus `php bin/console update:apply` only after verifying hashes locally.

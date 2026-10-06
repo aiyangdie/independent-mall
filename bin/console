@@ -46,6 +46,39 @@ if ($command === 'install') {
     exit(0);
 }
 
+if ($command === 'update:apply') {
+    $flag = static function (string $name, string $default = '') use ($argv): string {
+        foreach ($argv as $arg) {
+            if (str_starts_with($arg, $name . '=')) {
+                return substr($arg, strlen($name) + 1);
+            }
+        }
+        return $default;
+    };
+    $manifestPath = $flag('--manifest');
+    $artifact = $flag('--artifact');
+    $install = $flag('--install');
+    $public = $flag('--public');
+    $current = $flag('--current', '0.1.0');
+    try {
+        if (!is_file($manifestPath) || !is_file($artifact) || !is_file($public) || !is_dir($install)) {
+            throw new RuntimeException('update:apply needs existing --manifest --artifact --public files and --install directory.');
+        }
+        $raw = (string) file_get_contents($manifestPath);
+        $manifest = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($manifest)) {
+            throw new RuntimeException('Manifest must be a JSON object.');
+        }
+        $pem = (string) file_get_contents($public);
+        $backup = (new IndependentMall\Update\SafeApplier())->apply($install, $artifact, $manifest, $pem, $current);
+        echo "Applied. Backup: {$backup}\n";
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
+}
+
 $kernel = Kernel::boot($root, false);
 
 if ($command === 'migrate') {
@@ -73,5 +106,5 @@ if ($command === 'demo:seed') {
     exit(0);
 }
 
-echo "Usage: php bin/console [doctor|install|migrate|admin:create|demo:seed|health]\n";
+echo "Usage: php bin/console [doctor|install|migrate|admin:create|demo:seed|health|update:apply]\n";
 exit(1);

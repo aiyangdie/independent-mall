@@ -7,4 +7,4 @@
     <li><code>docs/licensing-design.md</code> — dual edition and entitlements</li>
     <li><code>apps/license-server/README.md</code> — signer process</li>
 </ul>
-<p>Update clients must verify SHA-256 (and a signature when present) before replacing files. Unsigned channels must not auto-install.</p>
+<p>Update clients must verify SHA-256 and Ed25519 before replacing files. Unsigned channels must not auto-install. See <code>docs/ops.md</code>.</p>
