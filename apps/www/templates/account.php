@@ -63,9 +63,14 @@ $flash = $e((string) ($data['flash'] ?? ''));
         <?php endif; ?>
         <?php if (($row['expires_at'] ?? '') !== ''): ?>
             · expires <code><?= $e((string) $row['expires_at']) ?></code>
-        <?php endif; ?></li>
+        <?php endif; ?>
+        · <a href="/account/license.json?id=<?= $e((string) $row['license_id']) ?>">Download signed JSON</a>
+        </li>
 <?php endforeach; ?>
 </ul>
+<p>Demo public key for offline paste into Community <code>/admin/modules</code>:
+    <a href="/account/license-public.pem">license-public.pem</a>
+    (does not include the long-lived license token).</p>
 <form method="post" action="/account/activate">
     <?= $csrf->field() ?>
     <label>License id <input name="license_id" required></label>

@@ -171,6 +171,30 @@ final class OfficialSiteTest extends TestCase
         $this->assertSame($licenseId, $commercial[0]['license_id']);
         $this->assertSame('fake_completed', $commercial[0]['status']);
         $this->assertStringContainsString((string) $commercial[0]['id'], $account->body());
+        $this->assertStringContainsString('/account/license.json?id=', $account->body());
+        $this->assertStringContainsString('/account/license-public.pem', $account->body());
+        $licDl = $this->site->handle(new Request('GET', '/account/license.json', ['id' => $licenseId], [], [], []));
+        $this->assertSame(200, $licDl->status());
+        $this->assertStringContainsString('application/json', (string) $licDl->header('Content-Type'));
+        $this->assertSame('no-store', $licDl->header('Cache-Control'));
+        $envelope = json_decode($licDl->body(), true);
+        $this->assertIsArray($envelope);
+        $this->assertArrayHasKey('payload', $envelope);
+        $this->assertArrayHasKey('signature', $envelope);
+        $this->assertSame($licenseId, $envelope['payload']['license_id'] ?? null);
+        $this->assertStringNotContainsString($secret, $licDl->body());
+        $pemDl = $this->site->handle(new Request('GET', '/account/license-public.pem', [], [], [], []));
+        $this->assertSame(200, $pemDl->status());
+        $this->assertStringContainsString('BEGIN PUBLIC KEY', $pemDl->body());
+        $docPath = sys_get_temp_dir() . '/im-www-lic-' . bin2hex(random_bytes(3)) . '.json';
+        $pemPath = sys_get_temp_dir() . '/im-www-pem-' . bin2hex(random_bytes(3)) . '.pem';
+        file_put_contents($docPath, $licDl->body());
+        file_put_contents($pemPath, $pemDl->body());
+        $verifyGate = new FileLicenseGate($docPath, $pemPath, new FrozenClock(time()));
+        $this->assertTrue($verifyGate->allows(['storefront_notice']));
+        $this->assertStringContainsString('license_document_download', $this->site->handle(new Request('GET', '/account', [], [], [], []))->body());
+        $foreign = $this->site->handle(new Request('GET', '/account/license.json', ['id' => 'lic_not_yours'], [], [], []));
+        $this->assertSame(400, $foreign->status());
 
         $this->site->handle(new Request('POST', '/account/activate', [], [
             '_csrf' => $token,

@@ -95,6 +95,8 @@ final class Site
                 $method === 'POST' && $path === '/account/ticket/close' => $this->ticketClose($request),
                 $method === 'GET' && $path === '/account/download' => $this->download($request),
                 $method === 'POST' && $path === '/account/download/revoke' => $this->revokeDownload($request),
+                $method === 'GET' && $path === '/account/license.json' => $this->downloadLicenseJson($request),
+                $method === 'GET' && $path === '/account/license-public.pem' => $this->downloadLicensePublicPem(),
                 default => $this->page('not-found', ['title' => 'Not found'], 404),
             };
         } catch (\Throwable $e) {
@@ -278,6 +280,37 @@ final class Site
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'no-store',
             'Content-Disposition' => 'attachment; filename="' . basename($path) . '"',
+        ]);
+    }
+
+    private function downloadLicenseJson(Request $request): Response
+    {
+        $uid = $this->userId();
+        if ($uid < 1) {
+            return Response::html('Sign in required.', 401);
+        }
+        $licenseId = $request->query('id');
+        $body = $this->hub->licenseDocumentJson($uid, $licenseId);
+        $safeName = preg_replace('/[^a-zA-Z0-9._-]+/', '_', $licenseId) ?: 'license';
+        return new Response($body, 200, [
+            'Content-Type' => 'application/json; charset=UTF-8',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'no-store',
+            'Content-Disposition' => 'attachment; filename="' . $safeName . '.json"',
+        ]);
+    }
+
+    private function downloadLicensePublicPem(): Response
+    {
+        $uid = $this->userId();
+        if ($uid < 1) {
+            return Response::html('Sign in required.', 401);
+        }
+        return new Response($this->hub->publicPem(), 200, [
+            'Content-Type' => 'application/x-pem-file; charset=UTF-8',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'no-store',
+            'Content-Disposition' => 'attachment; filename="license-public.pem"',
         ]);
     }
 

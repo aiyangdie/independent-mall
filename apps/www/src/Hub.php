@@ -757,6 +757,32 @@ final class Hub
         return $this->publicPem;
     }
 
+    /**
+     * Returns the owned signed license envelope JSON for offline paste into Community /admin/modules.
+     * Does not include the long-lived license token.
+     */
+    public function licenseDocumentJson(int $userId, string $licenseId): string
+    {
+        $licenseId = trim($licenseId);
+        if ($licenseId === '' || preg_match('/^[a-zA-Z0-9._:-]{3,128}$/', $licenseId) !== 1) {
+            throw new \InvalidArgumentException('Unknown license.');
+        }
+        $stmt = $this->pdo->prepare(
+            'SELECT document FROM account_licenses WHERE user_id = :u AND license_id = :l'
+        );
+        $stmt->execute(['u' => $userId, 'l' => $licenseId]);
+        $doc = $stmt->fetchColumn();
+        if (!is_string($doc) || $doc === '') {
+            throw new \DomainException('License does not belong to this account.');
+        }
+        $decoded = json_decode($doc, true);
+        if (!is_array($decoded) || !isset($decoded['payload'], $decoded['signature'])) {
+            throw new \DomainException('License document is corrupt.');
+        }
+        $this->log($userId, 'license_document_download', ['license_id' => $licenseId]);
+        return json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    }
+
     private function userEmail(int $userId): string
     {
         $stmt = $this->pdo->prepare('SELECT email FROM users WHERE id = :i');
