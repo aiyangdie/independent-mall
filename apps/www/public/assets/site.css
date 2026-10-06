@@ -1,5 +1,7 @@
 :root { font-family: Georgia, "Times New Roman", serif; color: #1b1b1b; background: #f6f3ee; }
 body { margin: 0; }
+.skip { position: absolute; left: 0.75rem; top: 0.75rem; transform: translateY(-8rem); z-index: 20; background: #2c1810; color: #f6f3ee; padding: 0.5rem 0.75rem; }
+.skip:focus, .skip:focus-visible { transform: none; color: #f6f3ee; }
 .bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: #2c1810; color: #f6f3ee; }
 .bar a { color: #f6f3ee; }
 .brand { font-weight: 700; text-decoration: none; }
@@ -10,7 +12,9 @@ nav { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .err { color: #8b1e1e; }
 .ok { color: #1e5a32; }
 label { display: block; margin: 0.75rem 0; }
-input, textarea { width: 100%; max-width: 28rem; }
+input, textarea { width: 100%; max-width: 28rem; font-size: 1rem; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+img { max-width: 100%; height: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; text-align: left; }
 .foot { font-size: 0.9rem; }

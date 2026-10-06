@@ -35,6 +35,7 @@ ob_start();
         <label>On hand <input name="on_hand" type="number" min="0" value="0"></label>
         <button type="submit">Save draft</button>
     </form>
+    <div class="table-wrap">
     <table>
         <thead><tr><th>Name</th><th>Status</th><th>Type</th><th></th></tr></thead>
         <tbody>
@@ -55,6 +56,7 @@ ob_start();
         <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 </section>
 <?php
 $content = ob_get_clean();

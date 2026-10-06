@@ -5,6 +5,7 @@ ob_start();
     <p><a href="/admin">Dashboard</a></p>
     <h1>Customers</h1>
     <?php if (!empty($error)): ?><p class="alert" role="alert"><?= $e($error) ?></p><?php endif; ?>
+    <div class="table-wrap">
     <table>
         <thead><tr><th>ID</th><th>Email</th><th>Username</th><th>Roles</th><th>Status</th><th></th></tr></thead>
         <tbody>
@@ -26,6 +27,7 @@ ob_start();
         <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 </section>
 <?php
 $content = ob_get_clean();

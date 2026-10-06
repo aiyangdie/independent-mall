@@ -7,6 +7,7 @@ ob_start();
     <p>Order <?= $e($order['public_id'] ?? '') ?> is now <strong><?= $e($order['status'] ?? '') ?></strong>.</p>
     <p>Amount <?= $e(Money::format((int) ($order['payable_minor'] ?? 0), (string) ($order['currency'] ?? 'CNY'))) ?> (fake gateway, not a live charge).</p>
     <?php if (!empty($payments)): ?>
+        <div class="table-wrap">
         <table>
             <caption>Payment attempts</caption>
             <thead><tr><th>Provider</th><th>Status</th><th>Amount</th><th>Reference</th></tr></thead>
@@ -21,6 +22,7 @@ ob_start();
             <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
     <?php endif; ?>
     <?php if (!empty($flash_tokens)): ?>
         <p>Download links (shown once):</p>

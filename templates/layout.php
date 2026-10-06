@@ -22,10 +22,11 @@
         <a href="/account">Account</a>
         <a href="/register">Register</a>
         <a href="/login">Sign in</a>
+    </nav>
+    <nav aria-label="Operations">
+        <a href="/admin">Admin</a>
         <a href="/admin/products">Products</a>
-        <a href="/admin/categories">Categories</a>
         <a href="/admin/orders">Orders</a>
-        <a href="/admin/login">Admin</a>
     </nav>
 </header>
 <main id="main">

@@ -12,14 +12,13 @@ ob_start();
     <?php endforeach; ?>
     <h2>Options</h2>
     <?php foreach ($variants as $v): ?>
-        <form method="post" action="/cart/add">
+        <form class="buy-row" method="post" action="/cart/add">
             <?= $csrf ?>
             <input type="hidden" name="variant_id" value="<?= $e($v['id']) ?>">
             <p><?= $e($v['title']) ?> · <?= $e($v['sku']) ?> · <?= $e(Money::format((int) $v['price_minor'], (string) $v['currency'])) ?>
-                · in stock <?= $e((int) $v['on_hand'] - (int) $v['reserved']) ?>
-                <label>Qty <input type="number" name="qty" value="1" min="1" max="99"></label>
-                <button type="submit">Add to cart</button>
-            </p>
+                · in stock <?= $e((int) $v['on_hand'] - (int) $v['reserved']) ?></p>
+            <label>Qty <input type="number" name="qty" value="1" min="1" max="99"></label>
+            <button type="submit">Add to cart</button>
         </form>
     <?php endforeach; ?>
     <h2>Report this listing</h2>

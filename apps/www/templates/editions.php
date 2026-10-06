@@ -1,5 +1,6 @@
 <?php /** @var array<string, mixed> $data */ ?>
 <h1>Community and commercial</h1>
+<div class="table-wrap">
 <table>
     <thead><tr><th></th><th>Community</th><th>Commercial add-ons</th></tr></thead>
     <tbody>
@@ -9,3 +10,4 @@
     <tr><td>Source of entitlements</td><td>None</td><td>Signed Ed25519 document on disk</td></tr>
     </tbody>
 </table>
+</div>

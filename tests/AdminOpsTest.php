@@ -79,11 +79,14 @@ final class AdminOpsTest extends TestCase
         $settings->put('shop_name', 'North Harbor Goods', 1);
         $home = $this->kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertStringContainsString('North Harbor Goods', $home->body());
+        $this->assertStringContainsString('Skip to content', $home->body());
+        $this->assertStringContainsString('aria-label="Operations"', $home->body());
         $page = $this->kernel->handle(new Request('GET', '/admin/settings', [], [], [], []));
         $this->assertSame(200, $page->status());
         $this->assertStringContainsString('North Harbor Goods', $page->body());
         $skus = $this->kernel->handle(new Request('GET', '/admin/skus', [], [], [], []));
         $this->assertSame(200, $skus->status());
+        $this->assertStringContainsString('table-wrap', $skus->body());
         $payments = $this->kernel->handle(new Request('GET', '/admin/payments', [], [], [], []));
         $this->assertSame(200, $payments->status());
         $this->assertStringContainsString('Fake adapter only', $payments->body());

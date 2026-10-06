@@ -54,7 +54,10 @@ final class OfficialSiteTest extends TestCase
             $this->assertStringNotContainsString('彩虹', $res->body());
             $this->assertStringNotContainsString('代刷', $res->body());
             $this->assertStringContainsString('Counsel has not reviewed', $res->body());
+            $this->assertStringContainsString('Skip to content', $res->body());
         }
+        $editions = $this->site->handle(new Request('GET', '/editions', [], [], [], []));
+        $this->assertStringContainsString('table-wrap', $editions->body());
         $refunds = $this->site->handle(new Request('GET', '/legal/refunds', [], [], [], []));
         $this->assertStringContainsString('mandatory consumer law', $refunds->body());
         $ban = $this->site->handle(new Request('GET', '/legal/prohibited', [], [], [], []));

@@ -4,6 +4,7 @@ ob_start();
 <section>
     <p><a href="/admin">Dashboard</a></p>
     <h1>SKUs and inventory</h1>
+    <div class="table-wrap">
     <table>
         <thead><tr><th>SKU</th><th>Product</th><th>Price</th><th>On hand</th><th>Reserved</th><th>Status</th><th></th></tr></thead>
         <tbody>
@@ -27,6 +28,7 @@ ob_start();
         <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 </section>
 <?php
 $content = ob_get_clean();

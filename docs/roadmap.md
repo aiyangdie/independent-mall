@@ -8,7 +8,7 @@ Status is only marked done after tests or HTTP checks in that environment.
 | 1 | Skeleton, config, migrations, admin login, health, tests | Done locally: PHPUnit 5/5, HTTP on :8090 |
 | 2 | Catalog, SKU, inventory, review, uploads | Done locally: PHPUnit 9/9 including prohibited-goods and upload tests |
 | 3 | Cart, address, orders, fake pay, delivery, refunds | Done locally: PHPUnit 18/18; HTTP register→cart→checkout→fake pay→refund on :8090 |
-| 4 | Storefront + admin screens, responsive pass | In progress: payments/refunds/order detail and payment-result pages; remaining visual QA on a real mobile device |
+| 4 | Storefront + admin screens, responsive pass | In progress locally: skip link, split nav, table overflow, 640px column layout. Real-device visual QA not signed off |
 | 5 | Installer, deploy/upgrade docs, release checklist | In progress locally: doctor/install lock, backup/restore, release:scan; HTTP commerce smoke on :8090 this host. Spare-machine install not signed off |
 | 6 | Commercial module seam + sample plugin | In progress locally: host + sample-notice; default deny without local entitlement; community tests must not import commercial classes |
 | 7 | License server | In progress locally: admin/CLI refresh only; failure keeps local document and grace; storefront does not call the server |

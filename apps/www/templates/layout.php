@@ -11,6 +11,7 @@ $title = htmlspecialchars((string) ($data['title'] ?? 'Independent Mall'), ENT_Q
     <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="bar">
     <a class="brand" href="/">Independent Mall</a>
     <nav>
@@ -27,7 +28,7 @@ $title = htmlspecialchars((string) ($data['title'] ?? 'Independent Mall'), ENT_Q
         <?php endif; ?>
     </nav>
 </header>
-<main class="wrap">
+<main id="main" class="wrap">
 <?php include $viewFile; ?>
 </main>
 <footer class="bar foot">
