@@ -153,6 +153,68 @@ final class InstallerTest extends TestCase
         $this->assertStringContainsString('Already installed', $page->body());
     }
 
+    public function testEmptyTreeInstallServesHealthAndCatalog(): void
+    {
+        $this->copyReleaseSkeleton($this->tmp);
+        $installer = new Installer($this->tmp, $this->tmp . '/database/migrations');
+        $installer->install([
+            'admin_email' => 'fresh@example.invalid',
+            'admin_username' => 'freshops',
+            'admin_password' => 'correct-horse-battery',
+            'shop_name' => 'Empty Tree Goods',
+            'app_url' => 'http://127.0.0.1:8090',
+            'database_url' => 'sqlite:///%ROOT%/var/data/app.sqlite',
+            'seed' => '1',
+        ]);
+        $env = (string) file_get_contents($this->tmp . '/.env');
+        $this->assertMatchesRegularExpression('/^LICENSE_SERVER_URL=$/m', $env);
+        $this->assertMatchesRegularExpression('/^PAYMENT_ADAPTER=fake$/m', $env);
+        $config = Config::load($this->tmp);
+        $this->assertSame('', $config->get('LICENSE_SERVER_URL'));
+        $pdo = ConnectionFactory::make($config->get('DATABASE_URL'));
+        $auth = new SessionAuth($pdo, new PasswordHasher(), new RateLimiter($pdo), new AuditLogger($pdo), $config->get('APP_KEY'));
+        $sess = sys_get_temp_dir() . '/im-empty-sess-' . bin2hex(random_bytes(3));
+        $auth->start($sess, 'ime', 3600, false);
+        $kernel = new Kernel($config, $pdo, $auth, new Csrf(), new Renderer($this->tmp . '/templates'), new Router());
+        $health = json_decode($kernel->handle(new Request('GET', '/healthz', [], [], [], []))->body(), true);
+        $this->assertSame('ok', $health['status']);
+        $this->assertSame('community', $health['edition']);
+        $this->assertTrue($health['installed']);
+        $this->assertFalse($health['license_required']);
+        $this->assertFalse($health['network_required']);
+        $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
+        $this->assertSame(200, $home->status());
+        $this->assertStringContainsString('Empty Tree Goods', $home->body());
+        $this->assertStringContainsString('lawful trade', $home->body());
+        $this->assertStringContainsString('Skip to content', $home->body());
+        $this->assertStringNotContainsString('Sample commercial notice', $home->body());
+        $locked = $kernel->handle(new Request('GET', '/install', [], [], [], []));
+        $this->assertSame(409, $locked->status());
+    }
+
+    private function copyReleaseSkeleton(string $dest): void
+    {
+        $pairs = [
+            '/.env.example' => '/.env.example',
+            '/public/assets/app.css' => '/public/assets/app.css',
+        ];
+        foreach ($pairs as $from => $to) {
+            $target = $dest . $to;
+            if (!is_dir(dirname($target))) {
+                mkdir(dirname($target), 0775, true);
+            }
+            copy($this->root . $from, $target);
+        }
+        foreach (['layout.php', 'store/home.php', 'store/search.php', 'store/category.php', 'store/not-found.php', 'install/form.php', 'install/locked.php'] as $rel) {
+            $target = $dest . '/templates/' . $rel;
+            if (!is_dir(dirname($target))) {
+                mkdir(dirname($target), 0775, true);
+            }
+            copy($this->root . '/templates/' . $rel, $target);
+        }
+        mkdir($dest . '/modules', 0775, true);
+    }
+
     private function deleteTree(string $dir): void
     {
         if (!is_dir($dir)) {

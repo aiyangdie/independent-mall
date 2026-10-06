@@ -1,6 +1,18 @@
 <?php /** @var array<string, mixed> $data */ ?>
 <h1>Changelog</h1>
+<p class="callout callout-fake" role="status">
+    Development builds only. Purchases on this site use a <strong>Fake</strong> adapter. Nothing here is a production release channel.
+</p>
 <ol>
-    <li>0.1.1 — Signed notes artifact for the update-verifier demo. Still not a production release.</li>
-    <li>0.1.0-dev — Community core stages 0–7 plus official-site slice. Unsigned snapshot.</li>
+    <li>
+        <strong>0.1.1-dev</strong> — License issuer purge + data inventory; official-site license status (bound/revoked);
+        admin audit action filter; pricing Fake-only / counsel callouts; focus and reduced-motion CSS anchors;
+        empty-tree install smoke in PHPUnit. Still not a production release.
+    </li>
+    <li>
+        <strong>0.1.1</strong> — Signed notes artifact for the update-verifier demo. Still not a production release.
+    </li>
+    <li>
+        <strong>0.1.0-dev</strong> — Community core stages 0–7 plus official-site slice. Unsigned snapshot.
+    </li>
 </ol>

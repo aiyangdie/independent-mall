@@ -62,6 +62,10 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('callout-fake', $pricing->body());
         $this->assertStringContainsString('callout-legal', $pricing->body());
         $this->assertStringContainsString('/legal/disclaimer', $pricing->body());
+        $changelog = $this->site->handle(new Request('GET', '/changelog', [], [], [], []));
+        $this->assertStringContainsString('0.1.1-dev', $changelog->body());
+        $this->assertStringContainsString('Fake', $changelog->body());
+        $this->assertStringContainsString('not a production release', $changelog->body());
         $editions = $this->site->handle(new Request('GET', '/editions', [], [], [], []));
         $this->assertStringContainsString('table-wrap', $editions->body());
         $refunds = $this->site->handle(new Request('GET', '/legal/refunds', [], [], [], []));

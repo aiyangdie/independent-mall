@@ -6,6 +6,7 @@ Local tree `codex/community-core`, PHP 8.5.10, 2026-10-06:
 
 - [x] `vendor/bin/phpunit` pass on PHP 8.2+ (this machine: 8.5.10). Full empty-host `composer install` not re-run this round.
 - [x] Empty-directory install via `Installer` succeeds once and refuses a second run (`tests/InstallerTest.php`). Live `php bin/console install` on an already-installed clone is expected to refuse.
+- [x] Empty-tree skeleton install then serves `/healthz` + seeded catalog with `LICENSE_SERVER_URL=` and `network_required=false` (`testEmptyTreeInstallServesHealthAndCatalog`). Not a separate physical spare machine.
 - [x] `migrate` is a no-op on a freshly installed schema and applies when a new `database/migrations/*.sql` file is added (same test).
 - [x] HTTP smoke: register → cart → fake pay → refund (`tests/http_commerce_smoke.php`) against `http://127.0.0.1:8090/` (this Community shop, PHP 8.5.10). Storefront smoke also passed. Latest local demo order id 6.
 - [x] `/healthz` shows `"license_required": false`, `"network_required": false`, and `"edition": "community"` on loopback (`http://127.0.0.1:8090/healthz`). Storefront has no `curl_init` except admin refresh (`tests/OfflineCoreTest.php`). Physical NIC unplug was not performed.

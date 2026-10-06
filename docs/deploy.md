@@ -33,6 +33,10 @@ Or open `/install` once when `.env` is absent. A second install is refused.
 3. Run `php bin/console release:scan` before shipping a tree you built yourself.
 4. Real payment, SMTP, and OAuth stay off until you replace Fake/Null adapters and record vendors in `docs/legal/third-parties.md`.
 
+## Automated empty-tree check
+
+PHPUnit `testEmptyTreeInstallServesHealthAndCatalog` copies a minimal skeleton into a temp directory, runs `Installer`, then asserts `/healthz` (`network_required=false`, `LICENSE_SERVER_URL` empty) and a seeded catalog home page. That is not a spare physical host, but it exercises the same install→boot path without the developer’s existing `.env`.
+
 ## What is not signed off here
 
 - A clean spare-machine install from a release zip
