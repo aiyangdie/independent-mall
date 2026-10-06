@@ -64,9 +64,13 @@ final class Hub
                 user_id INTEGER NOT NULL,
                 title TEXT NOT NULL,
                 body TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT \'open\',
+                staff_reply TEXT NOT NULL DEFAULT \'\',
+                updated_at TEXT NOT NULL DEFAULT \'\',
                 created_at TEXT NOT NULL
             )'
         );
+        $this->ensureTicketColumns();
         $this->pdo->exec(
             'CREATE TABLE IF NOT EXISTS security_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -303,16 +307,78 @@ final class Hub
         return $nonce;
     }
 
-    public function openTicket(int $userId, string $title, string $body): void
+    public function openTicket(int $userId, string $title, string $body): int
     {
         $title = trim($title);
         $body = trim($body);
         if ($title === '' || $body === '') {
             throw new \InvalidArgumentException('Ticket needs a title and body.');
         }
-        $this->pdo->prepare('INSERT INTO tickets (user_id, title, body, created_at) VALUES (:u, :ti, :b, :t)')
-            ->execute(['u' => $userId, 'ti' => $title, 'b' => $body, 't' => gmdate('c')]);
-        $this->log($userId, 'ticket', ['title' => $title]);
+        $now = gmdate('c');
+        $this->pdo->prepare(
+            'INSERT INTO tickets (user_id, title, body, status, staff_reply, updated_at, created_at)
+             VALUES (:u, :ti, :b, :s, :r, :up, :t)'
+        )->execute([
+            'u' => $userId,
+            'ti' => $title,
+            'b' => $body,
+            's' => 'open',
+            'r' => '',
+            'up' => $now,
+            't' => $now,
+        ]);
+        $id = (int) $this->pdo->lastInsertId();
+        $this->log($userId, 'ticket_open', ['ticket_id' => $id, 'title' => $title]);
+        return $id;
+    }
+
+    /**
+     * Demo staff reply (same customer session). Moves open → answered.
+     */
+    public function answerTicket(int $userId, int $ticketId, string $reply): void
+    {
+        $reply = trim($reply);
+        if ($reply === '') {
+            throw new \InvalidArgumentException('Reply body is required.');
+        }
+        $row = $this->requireTicket($userId, $ticketId);
+        if ((string) $row['status'] === 'closed') {
+            throw new \DomainException('Closed tickets cannot be answered.');
+        }
+        if ((string) $row['status'] !== 'open' && (string) $row['status'] !== 'answered') {
+            throw new \DomainException('Ticket status is not acceptable.');
+        }
+        $this->pdo->prepare(
+            'UPDATE tickets SET status = :s, staff_reply = :r, updated_at = :u WHERE id = :i AND user_id = :uid'
+        )->execute([
+            's' => 'answered',
+            'r' => $reply,
+            'u' => gmdate('c'),
+            'i' => $ticketId,
+            'uid' => $userId,
+        ]);
+        $this->log($userId, 'ticket_answer', ['ticket_id' => $ticketId]);
+    }
+
+    public function closeTicket(int $userId, int $ticketId): void
+    {
+        $row = $this->requireTicket($userId, $ticketId);
+        $status = (string) $row['status'];
+        if ($status === 'closed') {
+            throw new \DomainException('Ticket is already closed.');
+        }
+        if ($status !== 'open' && $status !== 'answered') {
+            throw new \DomainException('Ticket status is not acceptable.');
+        }
+        $this->pdo->prepare(
+            'UPDATE tickets SET status = :s, updated_at = :u WHERE id = :i AND user_id = :uid'
+        )->execute([
+            's' => 'closed',
+            'u' => gmdate('c'),
+            'i' => $ticketId,
+            'uid' => $userId,
+        ]);
+        $this->log($userId, 'ticket_close', ['ticket_id' => $ticketId, 'from' => $status]);
     }
 
     /**
@@ -323,6 +389,40 @@ final class Hub
         $stmt = $this->pdo->prepare('SELECT * FROM tickets WHERE user_id = :u ORDER BY id DESC');
         $stmt->execute(['u' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requireTicket(int $userId, int $ticketId): array
+    {
+        if ($ticketId < 1) {
+            throw new \InvalidArgumentException('Unknown ticket.');
+        }
+        $stmt = $this->pdo->prepare('SELECT * FROM tickets WHERE id = :i AND user_id = :u');
+        $stmt->execute(['i' => $ticketId, 'u' => $userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            throw new \DomainException('Ticket does not belong to this account.');
+        }
+        return $row;
+    }
+
+    private function ensureTicketColumns(): void
+    {
+        $names = [];
+        foreach ($this->pdo->query('PRAGMA table_info(tickets)') as $col) {
+            $names[] = (string) $col['name'];
+        }
+        if (!in_array('status', $names, true)) {
+            $this->pdo->exec("ALTER TABLE tickets ADD COLUMN status TEXT NOT NULL DEFAULT 'open'");
+        }
+        if (!in_array('staff_reply', $names, true)) {
+            $this->pdo->exec("ALTER TABLE tickets ADD COLUMN staff_reply TEXT NOT NULL DEFAULT ''");
+        }
+        if (!in_array('updated_at', $names, true)) {
+            $this->pdo->exec("ALTER TABLE tickets ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''");
+        }
     }
 
     /**

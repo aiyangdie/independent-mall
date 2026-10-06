@@ -98,6 +98,7 @@ $flash = $e((string) ($data['flash'] ?? ''));
 </ul>
 
 <h2>Tickets</h2>
+<p>Statuses: <code>open</code> → <code>answered</code> (demo staff reply) → <code>closed</code>. No production mailbox.</p>
 <form method="post" action="/account/ticket">
     <?= $csrf->field() ?>
     <label>Title <input name="title" required></label>
@@ -106,7 +107,27 @@ $flash = $e((string) ($data['flash'] ?? ''));
 </form>
 <ul>
 <?php foreach ($data['tickets'] as $row): ?>
-    <li><?= $e((string) $row['title']) ?></li>
+    <li>
+        #<?= (int) $row['id'] ?>
+        <strong><?= $e((string) $row['title']) ?></strong>
+        status <code><?= $e((string) ($row['status'] ?? 'open')) ?></code>
+        <?php if ((string) ($row['staff_reply'] ?? '') !== ''): ?>
+            · reply: <?= $e((string) $row['staff_reply']) ?>
+        <?php endif; ?>
+        <?php if (($row['status'] ?? 'open') !== 'closed'): ?>
+            <form method="post" action="/account/ticket/answer" style="margin-top:.5rem">
+                <?= $csrf->field() ?>
+                <input type="hidden" name="ticket_id" value="<?= (int) $row['id'] ?>">
+                <label>Demo staff reply <input name="reply" required></label>
+                <button type="submit">Answer (Fake staff)</button>
+            </form>
+            <form method="post" action="/account/ticket/close" style="display:inline">
+                <?= $csrf->field() ?>
+                <input type="hidden" name="ticket_id" value="<?= (int) $row['id'] ?>">
+                <button type="submit">Close</button>
+            </form>
+        <?php endif; ?>
+    </li>
 <?php endforeach; ?>
 </ul>
 

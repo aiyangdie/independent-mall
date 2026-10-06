@@ -91,6 +91,8 @@ final class Site
                 $method === 'POST' && $path === '/account/revoke' => $this->revoke($request),
                 $method === 'POST' && $path === '/account/renew' => $this->renew($request),
                 $method === 'POST' && $path === '/account/ticket' => $this->ticket($request),
+                $method === 'POST' && $path === '/account/ticket/answer' => $this->ticketAnswer($request),
+                $method === 'POST' && $path === '/account/ticket/close' => $this->ticketClose($request),
                 $method === 'GET' && $path === '/account/download' => $this->download($request),
                 $method === 'POST' && $path === '/account/download/revoke' => $this->revokeDownload($request),
                 default => $this->page('not-found', ['title' => 'Not found'], 404),
@@ -232,7 +234,23 @@ final class Site
     {
         $uid = $this->requireUser($request);
         $this->hub->openTicket($uid, $request->post('title'), $request->post('body'));
-        $_SESSION['www_flash'] = 'Ticket saved.';
+        $_SESSION['www_flash'] = 'Ticket opened.';
+        return Response::redirect('/account');
+    }
+
+    private function ticketAnswer(Request $request): Response
+    {
+        $uid = $this->requireUser($request);
+        $this->hub->answerTicket($uid, (int) $request->post('ticket_id'), $request->post('reply'));
+        $_SESSION['www_flash'] = 'Demo staff reply saved (Fake operator).';
+        return Response::redirect('/account');
+    }
+
+    private function ticketClose(Request $request): Response
+    {
+        $uid = $this->requireUser($request);
+        $this->hub->closeTicket($uid, (int) $request->post('ticket_id'));
+        $_SESSION['www_flash'] = 'Ticket closed.';
         return Response::redirect('/account');
     }
 

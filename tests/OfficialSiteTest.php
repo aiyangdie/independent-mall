@@ -232,8 +232,33 @@ final class OfficialSiteTest extends TestCase
         ], [], []));
         $again = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertStringContainsString('Need invoice', $again->body());
+        $this->assertStringContainsString('status <code>open</code>', $again->body());
+        preg_match('/name="ticket_id" value="(\d+)"/', $again->body(), $tid);
+        $this->assertNotEmpty($tid);
+        $this->site->handle(new Request('POST', '/account/ticket/answer', [], [
+            '_csrf' => $token,
+            'ticket_id' => $tid[1],
+            'reply' => 'Fake staff: draft invoice noted.',
+        ], [], []));
+        $answered = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('status <code>answered</code>', $answered->body());
+        $this->assertStringContainsString('Fake staff: draft invoice noted.', $answered->body());
+        $this->assertStringContainsString('ticket_answer', $answered->body());
+        $this->site->handle(new Request('POST', '/account/ticket/close', [], [
+            '_csrf' => $token,
+            'ticket_id' => $tid[1],
+        ], [], []));
+        $closed = $this->site->handle(new Request('GET', '/account', [], [], [], []));
+        $this->assertStringContainsString('status <code>closed</code>', $closed->body());
+        $this->assertStringContainsString('ticket_close', $closed->body());
+        $reclose = $this->site->handle(new Request('POST', '/account/ticket/close', [], [
+            '_csrf' => $token,
+            'ticket_id' => $tid[1],
+        ], [], []));
+        $this->assertSame(400, $reclose->status());
+        $this->assertStringContainsString('already closed', $reclose->body());
 
-        preg_match('/download\?token=([a-z0-9-]+\.[0-9]+\.[a-f0-9]+\.[a-f0-9]+)/', $again->body(), $dl);
+        preg_match('/download\?token=([a-z0-9-]+\.[0-9]+\.[a-f0-9]+\.[a-f0-9]+)/', $closed->body(), $dl);
         $this->assertNotEmpty($dl);
         $file = $this->site->handle(new Request('GET', '/account/download', ['token' => $dl[1]], [], [], []));
         $this->assertSame(200, $file->status());
