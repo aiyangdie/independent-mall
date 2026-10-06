@@ -97,5 +97,20 @@ if ($method === 'POST' && $path === '/refresh') {
     exit;
 }
 
+if ($method === 'POST' && $path === '/purge') {
+    $body = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    try {
+        $store->purge(
+            (string) ($body['license_id'] ?? ''),
+            (string) ($body['token'] ?? ''),
+        );
+        echo json_encode(['ok' => true, 'purged' => true]);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 http_response_code(404);
 echo json_encode(['error' => 'not found']);

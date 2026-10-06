@@ -119,5 +119,27 @@ if ($command === 'revoke') {
     exit(0);
 }
 
-echo "Usage: php bin/license [keys|issue|offline|revoke]\n";
+if ($command === 'purge') {
+    $id = '';
+    $token = '';
+    $confirm = false;
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--id=')) {
+            $id = substr($arg, 5);
+        } elseif (str_starts_with($arg, '--token=')) {
+            $token = substr($arg, 8);
+        } elseif ($arg === '--confirm') {
+            $confirm = true;
+        }
+    }
+    if ($id === '' || $token === '' || !$confirm) {
+        fwrite(STDERR, "Usage: php bin/license purge --id=lic_1 --token=TOKEN --confirm\n");
+        exit(1);
+    }
+    $store->purge($id, $token);
+    echo "Purged {$id} (license row and its audit rows).\n";
+    exit(0);
+}
+
+echo "Usage: php bin/license [keys|issue|offline|revoke|purge]\n";
 exit(1);

@@ -10,6 +10,7 @@ Documents:
 - `commercial-agreement.md` — paid modules
 - `user-terms.md` — shopper terms
 - `privacy.md`
+- Related: [../license-server-data.md](../license-server-data.md) (commercial issuer fields only)
 - `prohibited-goods.md`
 - `refunds.md`
 - `acceptable-use.md`

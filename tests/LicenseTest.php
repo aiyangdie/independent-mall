@@ -345,6 +345,25 @@ final class LicenseTest extends TestCase
         $store->activate('lic_blank', 'token-blank-xx', '  ', $nonce);
     }
 
+    public function testPurgeRemovesLicenseAndAudit(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $store = new Store($pdo);
+        $nonce = $store->issue('lic_purge', 'token-purge-xx', ['storefront_notice'], gmdate('c', time() + 86400));
+        $store->activate('lic_purge', 'token-purge-xx', 'host-a', $nonce);
+        $this->assertTrue($store->exists('lic_purge'));
+        $store->purge('lic_purge', 'token-purge-xx');
+        $this->assertFalse($store->exists('lic_purge'));
+        $n = (int) $pdo->query("SELECT COUNT(*) FROM license_audit WHERE license_id = 'lic_purge'")->fetchColumn();
+        $this->assertSame(0, $n);
+        try {
+            $store->purge('lic_purge', 'token-purge-xx');
+            $this->fail('already purged');
+        } catch (\DomainException) {
+        }
+    }
+
     public function testLicenseServerLoadsFromItsOwnBootstrap(): void
     {
         $root = $this->root() . '/apps/license-server';
@@ -354,7 +373,13 @@ final class LicenseTest extends TestCase
         $http = (string) file_get_contents($root . '/public/index.php');
         $this->assertStringContainsString("bootstrap.php", $http);
         $this->assertStringContainsString('/revoke', $http);
+        $this->assertStringContainsString('/purge', $http);
         $this->assertStringNotContainsString('IndependentMall\\Kernel', $http);
+        $this->assertFileExists($this->root() . '/docs/license-server-data.md');
+        $dataDoc = (string) file_get_contents($this->root() . '/docs/license-server-data.md');
+        $this->assertStringContainsString('token_hash', $dataDoc);
+        $this->assertStringContainsString('Not collected', $dataDoc);
+        $this->assertStringContainsString('purge', $dataDoc);
         $this->assertStringNotContainsString('eval(', $http);
         require $root . '/bootstrap.php';
         $this->assertTrue(class_exists(Signer::class));

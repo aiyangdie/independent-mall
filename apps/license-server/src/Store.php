@@ -132,6 +132,23 @@ final class Store
     }
 
     /**
+     * Deletes the license row and its audit rows after token check. Irreversible.
+     */
+    public function purge(string $id, string $token): void
+    {
+        $this->requireRow($id, $token);
+        $this->pdo->prepare('DELETE FROM license_audit WHERE license_id = :i')->execute(['i' => $id]);
+        $this->pdo->prepare('DELETE FROM licenses WHERE id = :i')->execute(['i' => $id]);
+    }
+
+    public function exists(string $id): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT 1 FROM licenses WHERE id = :i');
+        $stmt->execute(['i' => $id]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function refresh(string $id, string $token, string $instanceId): array

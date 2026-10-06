@@ -1,6 +1,6 @@
 # Operations
 
-Community Edition runs without a license server. Keep `LICENSE_SERVER_URL` empty.
+Community Edition runs without a license server. Keep `LICENSE_SERVER_URL` empty. Production proxy steps: [deploy.md](deploy.md).
 
 ## Offline core
 
