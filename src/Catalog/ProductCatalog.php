@@ -54,7 +54,31 @@ final class ProductCatalog
     /**
      * @return array<string, mixed>|null
      */
-    public function product(int $id): ?array
+    public function variant(int $variantId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT v.*, i.on_hand, i.reserved, p.status AS product_status, p.type AS product_type, p.name AS product_name
+             FROM product_variants v
+             JOIN inventories i ON i.variant_id = v.id
+             JOIN products p ON p.id = v.product_id
+             WHERE v.id = :id'
+        );
+        $stmt->execute(['id' => $variantId]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $row : null;
+    }
+
+    public function attachDigitalAsset(int $productId, string $label, string $body): int
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO digital_assets (product_id, label, body) VALUES (:p, :l, :b)');
+        $stmt->execute(['p' => $productId, 'l' => $label, 'b' => $body]);
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function product(int $id): array|null
     {
         $stmt = $this->pdo->prepare('SELECT * FROM products WHERE id = :id');
         $stmt->execute(['id' => $id]);

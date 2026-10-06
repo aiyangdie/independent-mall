@@ -16,12 +16,16 @@ REM set APP_KEY and ADMIN_PASSWORD in .env
 composer install
 php bin/console migrate
 php bin/console admin:create
+php bin/console demo:seed
 php -S 127.0.0.1:8090 -t public public/index.php
 ```
 
 - Storefront: http://127.0.0.1:8090/
+- Register / sign in: http://127.0.0.1:8090/register
 - Health: http://127.0.0.1:8090/healthz
 - Admin: http://127.0.0.1:8090/admin/login
+
+Checkout uses the **Fake** payment adapter only. Real card networks are not connected.
 
 Tests:
 

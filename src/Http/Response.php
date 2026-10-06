@@ -30,6 +30,11 @@ final class Response
         );
     }
 
+    public static function redirect(string $to, int $status = 302): self
+    {
+        return new self('', $status, ['Location' => $to]);
+    }
+
     public static function file(string $path, string $mime): self
     {
         $body = file_get_contents($path);

@@ -1,0 +1,12 @@
+<?php
+
+declare(strict_types=1);
+
+namespace IndependentMall\Mail;
+
+final class NullMailer implements Mailer
+{
+    public function send(Message $message): void
+    {
+    }
+}

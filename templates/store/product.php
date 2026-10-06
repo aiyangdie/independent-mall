@@ -11,12 +11,17 @@ ob_start();
         <p><img src="/media/<?= $e($img['storage_key']) ?>" alt="" width="320"></p>
     <?php endforeach; ?>
     <h2>Options</h2>
-    <ul>
-        <?php foreach ($variants as $v): ?>
-            <li><?= $e($v['title']) ?> · <?= $e($v['sku']) ?> · <?= $e(Money::format((int) $v['price_minor'], (string) $v['currency'])) ?>
-                · in stock <?= $e((int) $v['on_hand'] - (int) $v['reserved']) ?></li>
-        <?php endforeach; ?>
-    </ul>
+    <?php foreach ($variants as $v): ?>
+        <form method="post" action="/cart/add">
+            <?= $csrf ?>
+            <input type="hidden" name="variant_id" value="<?= $e($v['id']) ?>">
+            <p><?= $e($v['title']) ?> · <?= $e($v['sku']) ?> · <?= $e(Money::format((int) $v['price_minor'], (string) $v['currency'])) ?>
+                · in stock <?= $e((int) $v['on_hand'] - (int) $v['reserved']) ?>
+                <label>Qty <input type="number" name="qty" value="1" min="1" max="99"></label>
+                <button type="submit">Add to cart</button>
+            </p>
+        </form>
+    <?php endforeach; ?>
     <h2>Report this listing</h2>
     <form method="post" action="/p/<?= $e($product['slug']) ?>/report">
         <?= $csrf ?>

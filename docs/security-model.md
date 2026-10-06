@@ -7,6 +7,10 @@
 - CSRF: per-session token on every state-changing form.
 - Authorization: RBAC checked in controllers/services, never only in templates.
 - Login: lockout after repeated failures per identity (hashed IP stored, not raw logs of passwords).
+- Password reset tokens are stored as SHA-256 hashes; plaintext is mailed via the Mailer adapter (Null in production HTTP, ArrayMailer in tests).
+- `session_epoch` increments on password change/reset/lock so other sessions stop working.
+- Fake payment notify requires HMAC of merchant order id, amount, and currency. Shoppers cannot POST a new total.
+- Digital delivery tokens are HMAC-hashed at rest; plaintext is shown once after fake payment.
 
 ## Web attacks
 

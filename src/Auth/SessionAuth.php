@@ -47,11 +47,16 @@ final class SessionAuth
             return null;
         }
         $stmt = $this->pdo->prepare(
-            "SELECT id, email, username, status FROM users WHERE id = :id AND status = 'active' AND deleted_at IS NULL"
+            "SELECT id, email, username, status, session_epoch FROM users WHERE id = :id AND deleted_at IS NULL"
         );
         $stmt->execute(['id' => (int) $id]);
         $row = $stmt->fetch();
-        if (!is_array($row)) {
+        if (!is_array($row) || $row['status'] !== 'active') {
+            return null;
+        }
+        $epoch = $_SESSION['epoch'] ?? null;
+        if ((int) $epoch !== (int) $row['session_epoch']) {
+            $this->logout();
             return null;
         }
         return [
@@ -88,7 +93,7 @@ final class SessionAuth
             return false;
         }
         $stmt = $this->pdo->prepare(
-            "SELECT id, password_hash, status FROM users
+            "SELECT id, password_hash, status, session_epoch FROM users
              WHERE (email = :e OR username = :u) AND deleted_at IS NULL"
         );
         $stmt->execute(['e' => $identity, 'u' => $identity]);
@@ -103,6 +108,7 @@ final class SessionAuth
         }
         session_regenerate_id(true);
         $_SESSION['uid'] = (int) $row['id'];
+        $_SESSION['epoch'] = (int) $row['session_epoch'];
         $this->audit->record((int) $row['id'], 'login.ok', 'user', (string) $row['id'], [], $this->ipHash($ip));
         return true;
     }
@@ -113,6 +119,12 @@ final class SessionAuth
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_destroy();
         }
+    }
+
+    public function bumpEpoch(int $userId): void
+    {
+        $this->pdo->prepare('UPDATE users SET session_epoch = session_epoch + 1, updated_at = :t WHERE id = :id')
+            ->execute(['t' => gmdate('c'), 'id' => $userId]);
     }
 
     public function ipHash(string $ip): string

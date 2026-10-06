@@ -14,6 +14,7 @@ use IndependentMall\Catalog\ImageStore;
 use IndependentMall\Catalog\ProductCatalog;
 use IndependentMall\Catalog\ProhibitedGoodsPolicy;
 use IndependentMall\Http\Csrf;
+use IndependentMall\Http\ShopFront;
 use IndependentMall\Http\Request;
 use IndependentMall\Http\Response;
 use IndependentMall\Http\Router;
@@ -114,6 +115,7 @@ final class Kernel
             ]));
         });
         $this->registerCatalogRoutes();
+        $this->registerCommerceRoutes();
     }
 
     /**
@@ -320,5 +322,10 @@ final class Kernel
             }
             return Response::redirect('/admin/products');
         });
+    }
+
+    private function registerCommerceRoutes(): void
+    {
+        ShopFront::register($this);
     }
 }

@@ -12,7 +12,12 @@
     <a class="brand" href="/">Independent Mall</a>
     <nav>
         <a href="/">Catalog</a>
+        <a href="/cart">Cart</a>
+        <a href="/account">Account</a>
+        <a href="/register">Register</a>
+        <a href="/login">Sign in</a>
         <a href="/admin/products">Products</a>
+        <a href="/admin/orders">Orders</a>
         <a href="/admin/login">Admin</a>
     </nav>
 </header>
