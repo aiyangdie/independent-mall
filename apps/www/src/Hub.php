@@ -295,10 +295,10 @@ final class Hub
     }
 
     /**
-     * Fake renewal only. Extends the paid window via the license store and replaces the signed account document.
+     * Fake renewal only. Extends the paid window, records site + issuer Fake orders, replaces the signed document.
      * Does not talk to a card network.
      *
-     * @return array{order_id:int,expires_at:string}
+     * @return array{order_id:int,issuer_order_id:string,customer_id:string,expires_at:string}
      */
     public function fakeRenew(int $userId, string $licenseId, string $token, int $days = 365): array
     {
@@ -315,6 +315,12 @@ final class Hub
             throw new \DomainException('Current expiry is not acceptable.');
         }
         $newExpires = gmdate('c', $baseTs + $days * 86400);
+        $email = $this->userEmail($userId);
+        $customerId = $this->store->ensureCustomer(
+            'www_u' . $userId,
+            $email,
+            'Official-site Fake account',
+        );
         $this->pdo->prepare(
             'INSERT INTO orders (user_id, sku, amount_minor, status, adapter, created_at)
              VALUES (:u, :s, :a, :st, :ad, :t)'
@@ -327,18 +333,33 @@ final class Hub
             't' => gmdate('c'),
         ]);
         $orderId = (int) $this->pdo->lastInsertId();
-        $payload = $this->store->renew($licenseId, $token, $newExpires);
+        $issuerOrderId = 'ord_' . bin2hex(random_bytes(6));
+        $payload = $this->store->fulfillFakeRenew(
+            $issuerOrderId,
+            $licenseId,
+            $token,
+            $newExpires,
+            4900,
+            $customerId,
+        );
         $doc = Signer::sign($payload, $this->privatePem);
         $this->pdo->prepare('UPDATE account_licenses SET document = :d WHERE user_id = :u AND license_id = :l')
             ->execute(['d' => json_encode($doc, JSON_UNESCAPED_SLASHES), 'u' => $userId, 'l' => $licenseId]);
         $this->log($userId, 'fake_renew', [
             'order_id' => $orderId,
+            'issuer_order_id' => $issuerOrderId,
+            'customer_id' => $customerId,
             'license_id' => $licenseId,
             'previous_expires_at' => (string) $before['expires_at'],
             'expires_at' => (string) $payload['expires_at'],
             'days' => $days,
         ]);
-        return ['order_id' => $orderId, 'expires_at' => (string) $payload['expires_at']];
+        return [
+            'order_id' => $orderId,
+            'issuer_order_id' => $issuerOrderId,
+            'customer_id' => $customerId,
+            'expires_at' => (string) $payload['expires_at'],
+        ];
     }
 
     /**

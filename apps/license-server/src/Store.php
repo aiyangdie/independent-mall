@@ -311,6 +311,97 @@ final class Store
     }
 
     /**
+     * Fake renewal bookkeeping: commercial_orders row (status fake_renewed) + Store::renew.
+     * Does not talk to a card network.
+     *
+     * @return array<string, mixed> Unsigned renewed payload
+     */
+    public function fulfillFakeRenew(
+        string $orderId,
+        string $licenseId,
+        string $token,
+        string $newExpiresAt,
+        int $amountMinor,
+        string $customerId = '',
+    ): array {
+        $orderId = $this->requireOrderId($orderId);
+        if ($amountMinor < 0 || $amountMinor > 1_000_000_000) {
+            throw new \InvalidArgumentException('Order amount is not acceptable.');
+        }
+        $row = $this->requireRow($licenseId, $token);
+        if ((int) $row['revoked'] === 1) {
+            throw new \DomainException('License revoked.');
+        }
+        $boundCustomer = (string) ($row['customer_id'] ?? '');
+        if ($customerId !== '') {
+            $customerId = $this->requireCustomerId($customerId);
+            $cstmt = $this->pdo->prepare('SELECT 1 FROM customers WHERE id = :i');
+            $cstmt->execute(['i' => $customerId]);
+            if (!$cstmt->fetchColumn()) {
+                throw new \DomainException('Unknown customer.');
+            }
+            if ($boundCustomer !== '' && $boundCustomer !== $customerId) {
+                throw new \DomainException('License belongs to another customer.');
+            }
+        } elseif ($boundCustomer !== '') {
+            $customerId = $boundCustomer;
+        } else {
+            throw new \DomainException('License has no customer.');
+        }
+        $productCode = (string) ($row['product_code'] ?? '');
+        $productVersion = (string) ($row['product_version'] ?? '');
+        if ($productCode === '' || $productVersion === '') {
+            throw new \DomainException('License has no catalog product.');
+        }
+        $dup = $this->pdo->prepare('SELECT 1 FROM commercial_orders WHERE id = :i');
+        $dup->execute(['i' => $orderId]);
+        if ($dup->fetchColumn()) {
+            throw new \DomainException('Order already exists.');
+        }
+        $this->pdo->beginTransaction();
+        try {
+            if ($boundCustomer === '') {
+                $this->pdo->prepare('UPDATE licenses SET customer_id = :c WHERE id = :i')
+                    ->execute(['c' => $customerId, 'i' => $licenseId]);
+            }
+            $now = gmdate('c');
+            $this->pdo->prepare(
+                'INSERT INTO commercial_orders
+                 (id, customer_id, product_code, product_version, license_id, amount_minor, currency, status, adapter, created_at)
+                 VALUES (:i, :c, :pc, :pv, :l, :a, :cur, :st, :ad, :t)'
+            )->execute([
+                'i' => $orderId,
+                'c' => $customerId,
+                'pc' => $productCode,
+                'pv' => $productVersion,
+                'l' => $licenseId,
+                'a' => $amountMinor,
+                'cur' => 'XXX',
+                'st' => 'fake_renewed',
+                'ad' => 'fake',
+                't' => $now,
+            ]);
+            $payload = $this->renew($licenseId, $token, $newExpiresAt);
+            $this->audit($licenseId, 'order_renew', [
+                'order_id' => $orderId,
+                'customer_id' => $customerId,
+                'product_code' => $productCode,
+                'product_version' => $productVersion,
+                'amount_minor' => $amountMinor,
+                'adapter' => 'fake',
+                'expires_at' => (string) $payload['expires_at'],
+            ]);
+            $this->pdo->commit();
+            return $payload;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     public function commercialOrders(?string $customerId = null): array
@@ -319,14 +410,14 @@ final class Store
             $customerId = $this->requireCustomerId($customerId);
             $stmt = $this->pdo->prepare(
                 'SELECT id, customer_id, product_code, product_version, license_id, amount_minor, currency, status, adapter, created_at
-                 FROM commercial_orders WHERE customer_id = :c ORDER BY created_at DESC'
+                 FROM commercial_orders WHERE customer_id = :c ORDER BY created_at DESC, id DESC'
             );
             $stmt->execute(['c' => $customerId]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } else {
             $rows = $this->pdo->query(
                 'SELECT id, customer_id, product_code, product_version, license_id, amount_minor, currency, status, adapter, created_at
-                 FROM commercial_orders ORDER BY created_at DESC'
+                 FROM commercial_orders ORDER BY created_at DESC, id DESC'
             )->fetchAll(PDO::FETCH_ASSOC) ?: [];
         }
         $out = [];

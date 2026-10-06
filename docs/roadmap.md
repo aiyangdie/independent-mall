@@ -11,7 +11,7 @@ Status is only marked done after tests or HTTP checks in that environment.
 | 4 | Storefront + admin screens, responsive pass | In progress locally: register terms checkbox + footer legal drafts; skip/focus CSS. Real-device visual QA not signed off |
 | 5 | Installer, deploy/upgrade docs, release checklist | In progress locally: empty-tree install smoke + health/catalog; deploy.md; backup/restore; release:scan. Physical spare machine and NIC unplug not signed off |
 | 6 | Commercial module seam + sample plugin | In progress locally: Kernel FileLicenseGate + `/admin/license`; PHPUnit still OK with `modules/commercial` removed (one skip). `src/` must not import commercial classes |
-| 7 | License server | In progress locally: `licenses --customer=`; Fake `fulfill` orders; B2B customers; product catalog; renew; revoke + purge |
-| 8 | Public marketing/account site | In progress locally: account shows issuer commercial orders; Fake buy → customer + order + license; tickets; renew; single-use downloads. No production auto-updater or counsel sign-off |
+| 7 | License server | In progress locally: Fake renew orders (`fake_renewed`); `fulfill` / `licenses --customer=`; B2B customers; product catalog; revoke + purge |
+| 8 | Public marketing/account site | In progress locally: Fake renew writes issuer order; account lists issuer orders; Fake buy → customer + order + license; tickets; single-use downloads. No production auto-updater or counsel sign-off |
 
 Local URLs used in development: `http://127.0.0.1:8090/` (does not bind to the legacy shop on 8080).

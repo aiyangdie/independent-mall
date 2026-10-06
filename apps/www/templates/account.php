@@ -82,7 +82,7 @@ $flash = $e((string) ($data['flash'] ?? ''));
 </form>
 <form method="post" action="/account/renew">
     <?= $csrf->field() ?>
-    <p>Fake renewal only — records a Fake order and extends the signed license. Not a real charge.</p>
+    <p>Fake renewal only — records site + issuer Fake orders (<code>fake_renewed</code>) and extends the signed license. Not a real charge.</p>
     <label>License id <input name="license_id" required></label>
     <label>Token <input name="token" required></label>
     <label>Days <input name="days" type="number" min="1" max="3660" value="365" required></label>

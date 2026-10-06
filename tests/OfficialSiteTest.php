@@ -218,12 +218,19 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('Fake renewal recorded', $renewedPage->body());
         $this->assertStringContainsString('commercial-sample-notice-renew', $renewedPage->body());
         $this->assertStringContainsString('fake_renew', $renewedPage->body());
+        $this->assertStringContainsString('fake_renewed', $renewedPage->body());
+        $this->assertMatchesRegularExpression('/Issuer order ord_[a-f0-9]+/', $renewedPage->body());
         preg_match('/expires <code>([^<]+)<\/code>/', $renewedPage->body(), $expAfter);
         $this->assertNotEmpty($expAfter);
         $afterTs = strtotime($expAfter[1]);
         $this->assertNotFalse($afterTs);
         $this->assertSame($beforeTs + 30 * 86400, $afterTs);
         $this->assertStringContainsString('shop-demo-2', $renewedPage->body());
+        $issuerAfterRenew = $this->hub->issuerOrdersForAccount((int) $_SESSION['www_user']);
+        $this->assertGreaterThanOrEqual(2, count($issuerAfterRenew));
+        $statuses = array_column($issuerAfterRenew, 'status');
+        $this->assertContains('fake_completed', $statuses);
+        $this->assertContains('fake_renewed', $statuses);
 
         $this->site->handle(new Request('POST', '/account/revoke', [], [
             '_csrf' => $token,

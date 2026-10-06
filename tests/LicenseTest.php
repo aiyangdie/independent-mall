@@ -523,6 +523,25 @@ final class LicenseTest extends TestCase
         $this->assertIsString($all);
         $this->assertStringNotContainsString($token, $all);
         $this->assertStringNotContainsString($nonce, $all);
+
+        $later = gmdate('c', time() + 40 * 86400);
+        $renewed = $store->fulfillFakeRenew('ord_renew1', 'lic_ord1', $token, $later, 4900, 'cust_ord');
+        $this->assertSame(strtotime($later), strtotime((string) $renewed['expires_at']));
+        $ordersAfter = $store->commercialOrders('cust_ord');
+        $this->assertCount(2, $ordersAfter);
+        $renewRow = null;
+        foreach ($ordersAfter as $row) {
+            if (($row['id'] ?? '') === 'ord_renew1') {
+                $renewRow = $row;
+                break;
+            }
+        }
+        $this->assertIsArray($renewRow);
+        $this->assertSame('fake_renewed', $renewRow['status']);
+        $this->assertSame('lic_ord1', $renewRow['license_id']);
+        $this->assertSame(4900, $renewRow['amount_minor']);
+        $st = $store->status('lic_ord1');
+        $this->assertSame('order_renew', $st['recent_audit'][0]['action']);
     }
 
     public function testRenewExtendsExpiryAndRejectsRevokedOrShorter(): void

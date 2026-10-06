@@ -37,8 +37,8 @@
 - 阶段 4：前台与后台主流程页面；页脚法律草案链接；注册须勾选条款；CSS 焦点/对比度/reduced-motion 有自动化锚点（真机窄屏目视仍开放）。
 - 阶段 5 进行中：安装器、空树安装冒烟、deploy.md（本机 loopback `/healthz` `network_required=false`；未做网线拔除与物理备用机）。
 - 阶段 6 进行中：模块宿主、`FileLicenseGate`、示例插件；无本地签名文件则无法启用。
-- 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；B2B `customers`；Fake `commercial_orders` + `fulfillFakeOrder`；CLI `licenses --customer=`；产品/版本目录与 `issueForProduct`；续费 renew；CLI `status --id=` 含 `recent_audit`（无 token/nonce）；激活 nonce；吊销/purge；仪表盘 License audit。
-- 阶段 8 进行中：官网账户页展示 issuer 商业订单；Fake 购买写入 issuer customer + commercial_order + license（sample-notice@1.0.0）；续费/绑定；工单 open→answered→closed；下载链接单次且可撤销；定价/changelog Fake-only；验签更新检查仍为演示。
+- 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；B2B `customers`；Fake `commercial_orders`（`fulfillFakeOrder` / `fulfillFakeRenew`）；CLI `licenses --customer=`；产品/版本目录与 `issueForProduct`；续费 renew；CLI `status --id=` 含 `recent_audit`（无 token/nonce）；激活 nonce；吊销/purge；仪表盘 License audit。
+- 阶段 8 进行中：官网账户页展示 issuer 商业订单；Fake 购买/续费均写入 issuer 订单 + license（sample-notice@1.0.0）；绑定；工单 open→answered→closed；下载链接单次且可撤销；定价/changelog Fake-only；验签更新检查仍为演示。
 - 已知提交以 `git log` 为准。测试基线随 PHPUnit 输出更新。
 - 社区版不得依赖授权服务器才能启动、登录、浏览或下单。
 

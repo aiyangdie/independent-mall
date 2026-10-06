@@ -234,7 +234,10 @@ final class Site
             $days = 365;
         }
         $result = $this->hub->fakeRenew($uid, $request->post('license_id'), $request->post('token'), $days);
-        $_SESSION['www_flash'] = 'Fake renewal recorded. New expiry: ' . $result['expires_at'];
+        $_SESSION['www_flash'] = 'Fake renewal recorded. Issuer order '
+            . $result['issuer_order_id']
+            . ' customer ' . $result['customer_id']
+            . '. New expiry: ' . $result['expires_at'];
         return Response::redirect('/account');
     }
 

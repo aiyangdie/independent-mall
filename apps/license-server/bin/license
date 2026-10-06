@@ -296,6 +296,9 @@ if ($command === 'renew') {
     $days = 0;
     $expires = '';
     $out = '';
+    $orderId = '';
+    $amount = 4900;
+    $customer = '';
     foreach (array_slice($argv, 2) as $arg) {
         if (str_starts_with($arg, '--id=')) {
             $id = substr($arg, 5);
@@ -307,10 +310,16 @@ if ($command === 'renew') {
             $expires = substr($arg, 10);
         } elseif (str_starts_with($arg, '--out=')) {
             $out = substr($arg, 6);
+        } elseif (str_starts_with($arg, '--order=')) {
+            $orderId = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--amount=')) {
+            $amount = (int) substr($arg, 9);
+        } elseif (str_starts_with($arg, '--customer=')) {
+            $customer = substr($arg, 11);
         }
     }
     if ($id === '' || $token === '' || ($days < 1 && $expires === '')) {
-        fwrite(STDERR, "Usage: php bin/license renew --id=lic_1 --token=TOKEN (--days=365|--expires=ISO8601) [--out=license.json]\n");
+        fwrite(STDERR, "Usage: php bin/license renew --id=lic_1 --token=TOKEN (--days=365|--expires=ISO8601) [--order=ord_r1] [--amount=4900] [--customer=cust_demo] [--out=license.json]\n");
         exit(1);
     }
     try {
@@ -320,13 +329,18 @@ if ($command === 'renew') {
             throw new DomainException('Current expiry is not acceptable.');
         }
         $newExpires = $expires !== '' ? $expires : gmdate('c', $baseTs + $days * 86400);
-        $payload = $store->renew($id, $token, $newExpires);
+        if ($orderId !== '') {
+            $payload = $store->fulfillFakeRenew($orderId, $id, $token, $newExpires, $amount, $customer);
+            echo "Renewed {$id} with Fake order {$orderId} until {$payload['expires_at']}\n";
+        } else {
+            $payload = $store->renew($id, $token, $newExpires);
+        }
         $private = (string) file_get_contents($var . '/private.pem');
         $doc = json_encode(Signer::sign($payload, $private), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         if ($out !== '') {
             file_put_contents($out, $doc);
-            echo "Renewed {$id} until {$payload['expires_at']} and wrote {$out}\n";
-        } else {
+            echo "Wrote {$out}\n";
+        } elseif ($orderId === '') {
             echo $doc, "\n";
         }
     } catch (Throwable $e) {
