@@ -8,7 +8,7 @@ Status is only marked done after tests or HTTP checks in that environment.
 | 1 | Skeleton, config, migrations, admin login, health, tests | Done locally: PHPUnit 5/5, HTTP on :8090 |
 | 2 | Catalog, SKU, inventory, review, uploads | Done locally: PHPUnit 9/9 including prohibited-goods and upload tests |
 | 3 | Cart, address, orders, fake pay, delivery, refunds | Done locally: PHPUnit 18/18; HTTP register→cart→checkout→fake pay→refund on :8090 |
-| 4 | Storefront + admin screens, responsive pass | In progress locally: register terms checkbox + footer legal drafts; skip/focus CSS. Real-device visual QA open — `docs/human-acceptance.md` |
+| 4 | Storefront + admin screens, responsive pass | In progress locally: zh-CN storefront/account/admin/www + demo labels (`920895c`); register terms + legal drafts; skip/focus CSS. Real-device visual QA open — `docs/human-acceptance.md` |
 | 5 | Installer, deploy/upgrade docs, release checklist | In progress locally: empty-tree install smoke + health/catalog; deploy.md; backup/restore; release:scan. Physical spare / NIC unplug open — `docs/human-acceptance.md` |
 | 6 | Commercial module seam + sample plugin | In progress locally: trust-key pinned separately from license import; atomic import; FileLicenseGate::isValid; commercial dir removable (one skip) |
 | 7 | License server | In progress locally: Fake renew orders (`fake_renewed`); `fulfill` / `licenses --customer=`; B2B customers; product catalog; revoke + purge |

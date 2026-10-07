@@ -34,7 +34,7 @@
 - 阶段 1：配置、迁移、管理员会话、健康检查和测试骨架。
 - 阶段 2：分类、商品、SKU、库存流水、商品审核、禁售规则和安全图片上传。
 - 阶段 3：顾客账户、地址、购物车、订单状态机、Fake 支付、数字交付、退款申请。
-- 阶段 4：前台与后台主流程页面；页脚法律草案链接；注册须勾选条款；CSS 焦点/对比度/reduced-motion 有自动化锚点（真机窄屏目视仍开放）。
+- 阶段 4：前台与后台主流程页面；页脚法律草案链接；注册须勾选条款；CSS 焦点/对比度/reduced-motion 有自动化锚点（真机窄屏目视仍开放）。店面/账户/安装/后台与官网模板已中文化；演示商品与分类中文标签（`0004_zh_storefront_labels` + `DemoSeeder`）；`Support\Chinese` 状态文案；提交 `920895c`。
 - 阶段 5 进行中：安装器、空树安装冒烟、deploy.md（本机 loopback `/healthz` `network_required=false`；未做网线拔除与物理备用机）。
 - 阶段 6 进行中：模块宿主、`FileLicenseGate`（含 `isValid()`）、示例插件；信任公钥与许可证导入分离（`/admin/license/trust-key` + 原子导入）；`/admin/modules` 展示指纹与 product/customer；无本地签名文件则无法启用。
 - 阶段 7 进行中：独立授权中心签发与社区侧公钥验签；B2B `customers`；Fake `commercial_orders`（`fulfillFakeOrder` / `fulfillFakeRenew`）；CLI `licenses --customer=`；产品/版本目录与 `issueForProduct`；续费 renew；CLI `status --id=` 含 `recent_audit`（无 token/nonce）；激活 nonce；吊销/purge；仪表盘 License audit。
