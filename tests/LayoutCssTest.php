@@ -58,7 +58,7 @@ final class LayoutCssTest extends TestCase
         $this->assertGreaterThan(5, $checked);
         $layout = (string) file_get_contents($root . '/layout.php');
         $this->assertStringContainsString('跳到主要内容', $layout);
-        $this->assertStringContainsString('aria-label="运营入口"', $layout);
+        $this->assertStringContainsString('商家管理后台', $layout);
         $this->assertStringContainsString('aria-label="法律信息"', $layout);
         $this->assertStringContainsString('/legal/prohibited', $layout);
         $this->assertStringContainsString('id="main"', $layout);

@@ -128,7 +128,7 @@ final class CatalogTest extends TestCase
         $auth = new SessionAuth($this->pdo, $hasher, new RateLimiter($this->pdo), new AuditLogger($this->pdo), 'k');
         $kernel = new Kernel($config, $this->pdo, $auth, new Csrf(), new Renderer($this->root . '/templates'), new Router());
         $home = $kernel->handle(new Request('GET', '/', [], [], [], []));
-        $this->assertStringContainsString('暂无已上架商品', $home->body());
+        $this->assertStringContainsString('商品正在准备中', $home->body());
         $detail = $kernel->handle(new Request('GET', '/p/hidden-draft', [], [], [], []));
         $this->assertSame(404, $detail->status());
     }

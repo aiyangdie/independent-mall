@@ -80,7 +80,7 @@ final class AdminOpsTest extends TestCase
         $home = $this->kernel->handle(new Request('GET', '/', [], [], [], []));
         $this->assertStringContainsString('North Harbor Goods', $home->body());
         $this->assertStringContainsString('跳到主要内容', $home->body());
-        $this->assertStringContainsString('aria-label="运营入口"', $home->body());
+        $this->assertStringContainsString('商家管理后台', $home->body());
         $page = $this->kernel->handle(new Request('GET', '/admin/settings', [], [], [], []));
         $this->assertSame(200, $page->status());
         $this->assertStringContainsString('North Harbor Goods', $page->body());
