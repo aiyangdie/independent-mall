@@ -2,7 +2,7 @@
 /** @var array<string, mixed> $data */
 /** @var \IndependentMall\Http\Csrf $csrf */
 $csrf = $data['csrf'];
-$error = htmlspecialchars((string) ($data['error'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$error = htmlspecialchars(\IndependentMall\Support\Chinese::message($data['error'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 ?>
 <h1>登录客户中心</h1>
 <?php if ($error !== ''): ?><p class="err"><?= $error ?></p><?php endif; ?>

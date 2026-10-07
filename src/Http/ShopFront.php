@@ -13,9 +13,13 @@ use IndependentMall\Checkout\Cart;
 use IndependentMall\Checkout\Checkout;
 use IndependentMall\Checkout\Refunds;
 use IndependentMall\Fulfillment\DigitalFulfillment;
+use IndependentMall\Fulfillment\Shipping;
 use IndependentMall\Kernel;
-use IndependentMall\Mail\NullMailer;
+use IndependentMall\Mail\DeliveryException;
+use IndependentMall\Mail\MailerFactory;
+use IndependentMall\Mail\ResetLink;
 use IndependentMall\Payment\FakePaymentGateway;
+use IndependentMall\Payment\PaymentMode;
 use IndependentMall\Security\AuditLogger;
 use DomainException;
 
@@ -81,8 +85,18 @@ final class ShopFront
             if (!$this->app->csrf->assert($req)) {
                 return Response::html('表单无效', 400);
             }
-            $this->accounts()->requestReset($req->post('email'));
-            return $this->form('account/forgot', '重置密码', '', 200, '若该账户存在，重置令牌已发送。');
+            try {
+                $this->accounts()->requestReset($req->post('email'));
+            } catch (DeliveryException) {
+                // Same generic notice whether mail is down or the address is unknown.
+            }
+            return $this->form(
+                'account/forgot',
+                '重置密码',
+                '',
+                200,
+                '已收到申请。若账户存在且邮件服务可用，您将收到重置链接。',
+            );
         });
         $r->add('GET', '/reset', function (Request $req) {
             return $this->app->page('account/reset', [
@@ -293,6 +307,9 @@ final class ShopFront
                 'order' => $order,
                 'items' => $this->checkout()->items((int) $order['id']),
                 'deliveries' => $this->digital()->forOrder((int) $order['id']),
+                'shipment' => $this->shipping()->forOrder((int) $order['id']),
+                'refunds' => $this->refunds()->forOrder((int) $order['id']),
+                'refundable_minor' => $this->refunds()->remaining((int) $order['id']),
                 'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
                 'flash_tokens' => $flash,
@@ -319,6 +336,12 @@ final class ShopFront
             if (!$this->app->csrf->assert($req)) {
                 return Response::html('表单无效', 400);
             }
+            if (!PaymentMode::demoAllowed($this->app->config)) {
+                return $this->app->page('store/payment-error', [
+                    'title' => '演示支付不可用',
+                    'error' => '当前环境未开启演示支付。请使用微信支付，或在本地将 PAYMENT_DRIVER/PAYMENT_ADAPTER 设为 fake。',
+                ], 403);
+            }
             try {
                 $order = $this->checkout()->owned($this->app->auth->user()['id'], (int) $m[1]);
                 $fields = [
@@ -336,6 +359,34 @@ final class ShopFront
             }
             return Response::redirect('/orders/' . $m[1] . '/result');
         });
+        $r->add('POST', '#^/orders/(\d+)/receive$#', function (Request $req, array $m) {
+            if ($deny = $this->needUser()) {
+                return $deny;
+            }
+            if (!$this->app->csrf->assert($req)) {
+                return Response::html('表单无效', 400);
+            }
+            try {
+                $this->shipping()->confirmReceipt($this->app->auth->user()['id'], (int) $m[1]);
+            } catch (DomainException $e) {
+                return Response::html(htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'), 422);
+            }
+            return Response::redirect('/orders/' . $m[1]);
+        });
+        $r->add('POST', '#^/orders/(\d+)/deliveries/(\d+)/link$#', function (Request $req, array $m) {
+            if ($deny = $this->needUser()) {
+                return $deny;
+            }
+            if (!$this->app->csrf->assert($req)) {
+                return Response::html('表单无效', 400);
+            }
+            try {
+                $_SESSION['flash_delivery_tokens'] = [$this->digital()->renewLink($this->app->auth->user()['id'], (int) $m[1], (int) $m[2])];
+            } catch (DomainException $e) {
+                return Response::html(htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'), 422);
+            }
+            return Response::redirect('/orders/' . $m[1]);
+        });
         $r->add('POST', '#^/orders/(\d+)/refund$#', function (Request $req, array $m) {
             if ($deny = $this->needUser()) {
                 return $deny;
@@ -349,7 +400,7 @@ final class ShopFront
                     $this->app->auth->user()['id'],
                     (int) $m[1],
                     $req->intPost('amount_minor', (int) $order['payable_minor']),
-                    $req->post('reason', 'requested'),
+                    $req->post('reason', '顾客申请退款'),
                     $req->post('idempotency_key', 'refund-' . $order['public_id']),
                 );
             } catch (\Throwable $e) {
@@ -393,8 +444,27 @@ final class ShopFront
                 'order' => $order,
                 'items' => $this->checkout()->items((int) $order['id']),
                 'payments' => $this->payments()->forOrder((int) $order['id']),
+                'shipment' => $this->shipping()->forOrder((int) $order['id']),
+                'csrf' => $this->app->csrf->field(),
                 'user' => $this->app->auth->user(),
             ]);
+        });
+        $r->add('POST', '#^/admin/orders/(\d+)/ship$#', function (Request $req, array $m) {
+            if ($deny = $this->needAdmin()) {
+                return $deny;
+            }
+            if (!$this->app->auth->can('order.manage')) {
+                return Response::html('没有订单发货权限。', 403);
+            }
+            if (!$this->app->csrf->assert($req)) {
+                return Response::html('表单无效', 400);
+            }
+            try {
+                $this->shipping()->ship((int) $m[1], $this->app->auth->user()['id'], $req->post('carrier'), $req->post('tracking_number'), $req->post('idempotency_key'));
+            } catch (DomainException $e) {
+                return Response::html(htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'), 422);
+            }
+            return Response::redirect('/admin/orders/' . $m[1]);
         });
         $r->add('GET', '/admin/payments', function () {
             if ($deny = $this->needAdmin()) {
@@ -424,7 +494,14 @@ final class ShopFront
             if (!$this->app->csrf->assert($req)) {
                 return Response::html('表单无效', 400);
             }
-            $this->refunds()->decide((int) $m[1], $m[2], $this->app->auth->user()['id'] ?? null);
+            if (!$this->app->auth->can('order.manage')) {
+                return Response::html('没有退款审核权限。', 403);
+            }
+            try {
+                $this->refunds()->decide((int) $m[1], $m[2], $this->app->auth->user()['id'] ?? null);
+            } catch (DomainException $e) {
+                return Response::html(htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'), 422);
+            }
             return Response::redirect('/admin/refunds');
         });
     }
@@ -464,12 +541,19 @@ final class ShopFront
     private function accounts(): CustomerAccounts
     {
         $hasher = new PasswordHasher();
+        $reset = null;
+        try {
+            $reset = ResetLink::fromConfig($this->app->config);
+        } catch (\InvalidArgumentException) {
+            // Misconfigured APP_URL must not break registration/login; reset mail stays unavailable.
+        }
         return new CustomerAccounts(
             $this->app->pdo,
             $hasher,
-            new NullMailer(),
+            MailerFactory::fromConfig($this->app->config),
             new AuditLogger($this->app->pdo),
             $this->app->auth,
+            $reset,
         );
     }
 
@@ -503,6 +587,11 @@ final class ShopFront
             new AuditLogger($this->app->pdo),
             $this->app->config->get('APP_KEY', 'dev'),
         );
+    }
+
+    private function shipping(): Shipping
+    {
+        return new Shipping($this->app->pdo, $this->checkout(), new AuditLogger($this->app->pdo));
     }
 
     private function refunds(): Refunds

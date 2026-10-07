@@ -35,10 +35,17 @@ final class FakePaymentGateway
     public function create(int $orderId, string $idempotencyKey): array
     {
         $order = $this->checkout->byId($orderId);
+        $idempotencyKey = trim($idempotencyKey);
+        if ($idempotencyKey === '') {
+            throw new DomainException('支付幂等编号不能为空。');
+        }
         $stmt = $this->pdo->prepare('SELECT * FROM payments WHERE idempotency_key = :k');
         $stmt->execute(['k' => $idempotencyKey]);
         $existing = $stmt->fetch();
         if (is_array($existing)) {
+            if ((int) $existing['order_id'] !== $orderId || $existing['provider'] !== 'fake') {
+                throw new DomainException('支付幂等编号已被其他订单使用。');
+            }
             return $existing;
         }
         $now = gmdate('c');
@@ -70,6 +77,9 @@ final class FakePaymentGateway
             throw new DomainException('Invalid payment signature.');
         }
         $order = $this->checkout->byPublicId($payload['merchant_order'] ?? '');
+        if (trim($payload['provider_ref'] ?? '') === '') {
+            throw new DomainException('支付交易编号不能为空。');
+        }
         $amount = (int) ($payload['amount_minor'] ?? 0);
         $currency = $payload['currency'] ?? '';
         if ($amount !== (int) $order['payable_minor'] || $currency !== $order['currency']) {
@@ -83,42 +93,12 @@ final class FakePaymentGateway
 
         $outcome = $payload['outcome'] ?? 'failed';
         if ($outcome !== 'succeeded') {
-            $this->pdo->prepare("UPDATE payments SET status = 'failed', provider_ref = :r, updated_at = :t WHERE id = :id")
+            $this->pdo->prepare("UPDATE payments SET status = 'failed', provider_ref = :r, updated_at = :t WHERE id = :id AND status <> 'succeeded'")
                 ->execute(['r' => $payload['provider_ref'] ?? '', 't' => gmdate('c'), 'id' => $payment['id']]);
             return [];
         }
-        if ($payment['status'] === 'succeeded' || $order['status'] === 'paid' || $order['status'] === 'completed') {
-            return [];
-        }
-        if ($order['status'] !== 'pending_payment') {
-            throw new DomainException('Order is not awaiting payment.');
-        }
-        $this->pdo->beginTransaction();
-        try {
-            $this->pdo->prepare("UPDATE payments SET status = 'succeeded', provider_ref = :r, updated_at = :t WHERE id = :id")
-                ->execute(['r' => $payload['provider_ref'] ?? '', 't' => gmdate('c'), 'id' => $payment['id']]);
-            $items = $this->checkout->items((int) $order['id']);
-            foreach ($items as $item) {
-                $this->catalog->applyMovement(
-                    (int) $item['variant_id'],
-                    -(int) $item['qty'],
-                    -(int) $item['qty'],
-                    'sale',
-                    'sale:' . $order['public_id'] . ':v' . $item['variant_id'],
-                );
-            }
-            $this->pdo->prepare("UPDATE orders SET status = 'paid', updated_at = :t WHERE id = :id")
-                ->execute(['t' => gmdate('c'), 'id' => $order['id']]);
-            $issued = $this->digital->fulfillPaidOrder((int) $order['id']);
-            $this->pdo->prepare("UPDATE orders SET status = 'completed', updated_at = :t WHERE id = :id")
-                ->execute(['t' => gmdate('c'), 'id' => $order['id']]);
-            $this->pdo->commit();
-        } catch (\Throwable $e) {
-            $this->pdo->rollBack();
-            throw $e;
-        }
-        $this->audit->record((int) $order['user_id'], 'payment.succeeded', 'order', (string) $order['id']);
-        return $issued;
+        return (new PaymentSettlement($this->pdo, $this->checkout, $this->catalog, $this->digital, $this->audit))
+            ->settle((int) $payment['id'], $payload['provider_ref'], $amount, $currency);
     }
 
     /**

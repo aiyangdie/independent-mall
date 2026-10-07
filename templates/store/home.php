@@ -1,5 +1,4 @@
 <?php
-use IndependentMall\Catalog\Money;
 $products = $products ?? [];
 ob_start();
 ?>
@@ -18,18 +17,11 @@ ob_start();
         <?php endforeach; ?>
     </nav></section>
 <?php endif; ?>
-<div id="products" class="section-heading"><span><small>精选商品</small><h2>为你推荐</h2></span><a href="/search?q=">查看全部 →</a></div>
+<div id="products" class="section-heading"><span><small>精选商品</small><h2>为你推荐</h2></span><a href="/search">查看全部 →</a></div>
 <?php if ($products === []): ?>
     <div class="empty-state"><h2>商品正在准备中</h2><p>暂时没有已上架商品，请稍后再来看看。</p></div>
 <?php else: ?>
-<section class="grid">
-    <?php foreach ($products as $p): ?>
-        <article class="card">
-            <a class="product-cover" href="/p/<?= $e($p['slug']) ?>"><?php if (!empty($p['image_key'])): ?><img src="/media/<?= $e($p['image_key']) ?>" alt="<?= $e($p['name']) ?>"><?php else: ?><span><?= $e(mb_substr($p['name'], 0, 1)) ?></span><?php endif; ?></a>
-            <div class="product-body"><small><?= $e(\IndependentMall\Support\Chinese::label($p['type'])) ?></small><h2><a href="/p/<?= $e($p['slug']) ?>"><?= $e($p['name']) ?></a></h2><p><?= $e($p['summary']) ?></p><div class="price-row"><strong><?= isset($p['price_minor']) ? $e(Money::format((int) $p['price_minor'], (string) ($p['currency'] ?? 'CNY'))) : '价格待定' ?></strong><span>起</span></div><footer><span><?= $e($p['category_name']) ?></span><a href="/p/<?= $e($p['slug']) ?>">查看详情 →</a></footer></div>
-        </article>
-    <?php endforeach; ?>
-</section>
+<?php require __DIR__ . '/product-grid.php'; ?>
 <?php endif; ?>
 <?php
 $content = ob_get_clean();

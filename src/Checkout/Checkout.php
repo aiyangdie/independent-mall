@@ -147,6 +147,15 @@ final class Checkout
         }
         $this->pdo->beginTransaction();
         try {
+            $claim = $this->pdo->prepare("UPDATE orders SET status = 'cancelled', updated_at = :t WHERE id = :id AND status = 'pending_payment'");
+            $claim->execute(['t' => gmdate('c'), 'id' => $order['id']]);
+            if ($claim->rowCount() !== 1) {
+                if ($this->byId((int) $order['id'])['status'] === 'cancelled') {
+                    $this->pdo->commit();
+                    return;
+                }
+                throw new DomainException('只有未付款订单可以取消。');
+            }
             $items = $this->items((int) $order['id']);
             foreach ($items as $item) {
                 $this->catalog->applyMovement(
@@ -157,14 +166,12 @@ final class Checkout
                     'cancel:' . $order['public_id'] . ':v' . $item['variant_id'],
                 );
             }
-            $this->pdo->prepare("UPDATE orders SET status = 'cancelled', updated_at = :t WHERE id = :id")
-                ->execute(['t' => gmdate('c'), 'id' => $order['id']]);
+            $this->audit->record($actorId, 'order.cancelled', 'order', (string) $order['id']);
             $this->pdo->commit();
         } catch (\Throwable $e) {
             $this->pdo->rollBack();
             throw $e;
         }
-        $this->audit->record($actorId, 'order.cancelled', 'order', (string) $order['id']);
     }
 
     /**

@@ -39,6 +39,17 @@ final class LayoutCssTest extends TestCase
         $this->assertStringContainsString('@media (max-width: 40rem)', $css);
     }
 
+    public function testProductCardStylingDoesNotRemoveFormSpacing(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__) . '/public/assets/app.css');
+        $this->assertStringContainsString('.product-card { padding: 0;', $css);
+        $this->assertDoesNotMatchRegularExpression('/(?:^|\n)\.card\s*\{[^}]*padding\s*:\s*0\s*[;}]/', $css);
+        $this->assertStringContainsString('.card, .narrow {', $css);
+        $this->assertStringContainsString('padding: 1.25rem', $css);
+        $this->assertStringNotContainsString('.account-nav a:nth-child(n+3){display:none}', $css);
+        $this->assertStringContainsString('.order-list', $css);
+    }
+
     public function testTemplatesWithTablesUseOverflowWrap(): void
     {
         $root = dirname(__DIR__) . '/templates';

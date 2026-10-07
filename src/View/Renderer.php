@@ -20,6 +20,14 @@ final class Renderer
             throw new \RuntimeException('Missing template: ' . $view);
         }
         $e = static fn (mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $data['current_path'] ??= (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+        if (isset($data['error'])) {
+            $data['error'] = \IndependentMall\Support\Chinese::message($data['error']);
+        }
+        if (isset($data['notice'])) {
+            // Merchant-authored storefront notices must retain their original content.
+            $data['notice'] = \IndependentMall\Support\Chinese::message($data['notice'], false);
+        }
         extract($data, EXTR_SKIP);
         ob_start();
         include $file;

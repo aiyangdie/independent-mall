@@ -7,6 +7,7 @@ namespace IndependentMall\Auth;
 use DomainException;
 use IndependentMall\Mail\Mailer;
 use IndependentMall\Mail\Message;
+use IndependentMall\Mail\ResetLink;
 use IndependentMall\Security\AuditLogger;
 use PDO;
 
@@ -18,6 +19,7 @@ final class CustomerAccounts
         private Mailer $mailer,
         private AuditLogger $audit,
         private SessionAuth $auth,
+        private ?ResetLink $resetLink = null,
     ) {
     }
 
@@ -86,6 +88,13 @@ final class CustomerAccounts
     public function requestReset(string $email): void
     {
         $email = mb_strtolower(trim($email));
+        // Apply the same per-address limit to existing and unknown users, without logging email.
+        $limiter = new RateLimiter($this->pdo);
+        $limitKey = 'password-reset:' . hash('sha256', $email);
+        if ($limiter->tooMany($limitKey, 3600, 3)) {
+            return;
+        }
+        $limiter->record($limitKey, '', false);
         $stmt = $this->pdo->prepare("SELECT id, email FROM users WHERE email = :e AND status = 'active' AND deleted_at IS NULL");
         $stmt->execute(['e' => $email]);
         $row = $stmt->fetch();
@@ -94,6 +103,13 @@ final class CustomerAccounts
         }
         $raw = bin2hex(random_bytes(32));
         $hash = hash('sha256', $raw);
+        if ($this->resetLink === null
+            && !$this->mailer instanceof \IndependentMall\Mail\ArrayMailer
+            && !$this->mailer instanceof \IndependentMall\Mail\NullMailer) {
+            throw new \IndependentMall\Mail\DeliveryException();
+        }
+        // Existing service-only tests use a loopback URL. HTTP wiring must always inject APP_URL.
+        $link = ($this->resetLink ?? new ResetLink('http://127.0.0.1:8090', true))->forToken($raw);
         $this->pdo->prepare(
             'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, created_at) VALUES (:u, :h, :e, :c)'
         )->execute([
@@ -102,11 +118,19 @@ final class CustomerAccounts
             'e' => gmdate('c', time() + 3600),
             'c' => gmdate('c'),
         ]);
-        $this->mailer->send(new Message(
-            (string) $row['email'],
-            'Password reset',
-            'Use this one-time token within one hour: ' . $raw,
-        ));
+        try {
+            $this->mailer->send(new Message(
+                (string) $row['email'],
+                '重置您的商城账户密码',
+                "您好：\n\n您申请了重置商城账户密码，请在一小时内打开以下一次性链接：\n"
+                    . $link . "\n\n如果不是您本人申请，请忽略本邮件。请勿将此链接转发给他人。",
+            ));
+        } catch (\Throwable) {
+            // Failed delivery must not leave a working undisclosed reset credential.
+            $this->pdo->prepare('DELETE FROM password_reset_tokens WHERE token_hash = :h')->execute(['h' => $hash]);
+            $this->audit->record((int) $row['id'], 'user.reset_delivery_failed', 'user', (string) $row['id']);
+            throw new \IndependentMall\Mail\DeliveryException();
+        }
         $this->audit->record((int) $row['id'], 'user.reset_requested', 'user', (string) $row['id']);
     }
 
@@ -114,7 +138,9 @@ final class CustomerAccounts
     {
         $hash = hash('sha256', $rawToken);
         $stmt = $this->pdo->prepare(
-            'SELECT * FROM password_reset_tokens WHERE token_hash = :h'
+            "SELECT t.* FROM password_reset_tokens t
+             JOIN users u ON u.id = t.user_id
+             WHERE t.token_hash = :h AND u.status = 'active' AND u.deleted_at IS NULL"
         );
         $stmt->execute(['h' => $hash]);
         $row = $stmt->fetch();
@@ -123,10 +149,24 @@ final class CustomerAccounts
         }
         $this->pdo->beginTransaction();
         try {
-            $this->pdo->prepare('UPDATE password_reset_tokens SET used_at = :t WHERE id = :id')
-                ->execute(['t' => gmdate('c'), 'id' => $row['id']]);
-            $this->pdo->prepare('UPDATE users SET password_hash = :p, updated_at = :t WHERE id = :id')
-                ->execute(['p' => $this->hasher->hash($newPassword), 't' => gmdate('c'), 'id' => $row['user_id']]);
+            $now = gmdate('c');
+            $claim = $this->pdo->prepare(
+                'UPDATE password_reset_tokens SET used_at = :used WHERE id = :id AND used_at IS NULL AND expires_at >= :now'
+            );
+            $claim->execute(['used' => $now, 'now' => $now, 'id' => $row['id']]);
+            if ($claim->rowCount() !== 1) {
+                throw new DomainException('Reset token is invalid or expired.');
+            }
+            $password = $this->pdo->prepare(
+                "UPDATE users SET password_hash = :p, updated_at = :t
+                 WHERE id = :id AND status = 'active' AND deleted_at IS NULL"
+            );
+            $password->execute(['p' => $this->hasher->hash($newPassword), 't' => $now, 'id' => $row['user_id']]);
+            if ($password->rowCount() !== 1) {
+                throw new DomainException('Reset token is invalid or expired.');
+            }
+            $this->pdo->prepare('UPDATE password_reset_tokens SET used_at = :t WHERE user_id = :u AND used_at IS NULL')
+                ->execute(['t' => $now, 'u' => $row['user_id']]);
             $this->auth->bumpEpoch((int) $row['user_id']);
             $this->pdo->commit();
         } catch (\Throwable $e) {

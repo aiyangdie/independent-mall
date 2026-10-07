@@ -70,7 +70,7 @@ $zh = static fn (mixed $v): string => \IndependentMall\Support\Chinese::label($v
 <?php endforeach; ?>
 </ul>
 <p>用于社区版安装信任根和核对指纹的演示软件商公钥：
-    <a href="/account/license-public.pem">license-public.pem</a>
+    <a href="/account/license-public.pem">下载演示软件商公钥（PEM）</a>
     （只需在 <code>/admin/license/trust-key</code> 安装一次；不要随每份授权 JSON 重复粘贴。文件不包含长期授权令牌。）</p>
 <form method="post" action="/account/activate">
     <?= $csrf->field() ?>
@@ -168,6 +168,6 @@ $zh = static fn (mixed $v): string => \IndependentMall\Support\Chinese::label($v
 <h2>安全日志</h2>
 <ul>
 <?php foreach ($data['security'] as $row): ?>
-    <li><?= $e((string) $row['created_at']) ?> <?= $e((string) $row['action']) ?></li>
+    <li><?= $e((string) $row['created_at']) ?> <?= $e($zh($row['action'])) ?></li>
 <?php endforeach; ?>
 </ul>

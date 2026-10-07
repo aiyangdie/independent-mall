@@ -1,5 +1,6 @@
 <?php
 use IndependentMall\Catalog\Money;
+use IndependentMall\Support\Chinese;
 ob_start();
 ?>
 <section>
@@ -15,9 +16,10 @@ ob_start();
     </form>
     <form method="post" action="/logout"><?= $csrf ?><button>退出登录</button></form>
     <h2>最近订单</h2>
-    <ul>
+    <?php if ($orders === []): ?><p class="muted">还没有订单，<a href="/search">去选购商品</a>。</p><?php endif; ?>
+    <ul class="order-list">
         <?php foreach ($orders as $o): ?>
-            <li><a href="/orders/<?= $e($o['id']) ?>"><?= $e($o['public_id']) ?></a> · <?= $e($o['status']) ?> · <?= $e(Money::format((int) $o['payable_minor'], (string) $o['currency'])) ?></li>
+            <li><a href="/orders/<?= $e($o['id']) ?>"><?= $e($o['public_id']) ?></a><span class="status-label"><?= $e(Chinese::label($o['status'])) ?></span><strong><?= $e(Money::format((int) $o['payable_minor'], (string) $o['currency'])) ?></strong></li>
         <?php endforeach; ?>
     </ul>
 </section>

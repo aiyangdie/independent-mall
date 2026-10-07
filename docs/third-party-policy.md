@@ -20,6 +20,9 @@
 |-----------|---------|-----|
 | PHP 8.2+ | PHP License | Runtime |
 | PHPUnit 11.5.57 | BSD-3-Clause | Tests (see composer.lock) |
+| Symfony Mailer / Mime / EventDispatcher 7.4 | MIT | Optional SMTP password reset |
+| wechatpay/wechatpay 1.5 | Apache-2.0 | Official WeChat Pay Native / refunds |
+| bacon/bacon-qr-code 3.1 | BSD-2-Clause | WeChat Native payment QR SVG |
 | SQLite / MySQL | Public domain / GPL (engine, not shipped) | Data |
 | First-party CSS/JS | Same as this tree (TBD) | UI |
 

@@ -28,7 +28,7 @@ final class Config
             'APP_KEY' => '',
             'APP_TIMEZONE' => 'UTC',
             'APP_CURRENCY' => 'CNY',
-            'APP_LOCALE' => 'en',
+            'APP_LOCALE' => 'zh-CN',
             'DATABASE_URL' => 'sqlite:///' . $root . '/var/data/app.sqlite',
             'SESSION_NAME' => 'im_session',
             'SESSION_SECURE' => '0',

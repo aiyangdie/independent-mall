@@ -10,7 +10,11 @@ use IndependentMall\Auth\SessionAuth;
 use IndependentMall\Auth\CustomerAccounts;
 use IndependentMall\Config\Config;
 use IndependentMall\Config\ShopSettings;
-use IndependentMall\Mail\NullMailer;
+use IndependentMall\Mail\MailerFactory;
+use IndependentMall\Mail\ResetLink;
+use IndependentMall\Payment\PaymentMode;
+use IndependentMall\Payment\WechatSettings;
+use IndependentMall\Support\Chinese;
 use IndependentMall\Database\ConnectionFactory;
 use IndependentMall\Database\Migrator;
 use IndependentMall\Catalog\ImageStore;
@@ -73,6 +77,16 @@ final class Kernel
      */
     public function page(string $view, array $data = [], int $status = 200): Response
     {
+        $data['demo_payment_available'] = PaymentMode::demoAllowed($this->config);
+        $data['wechat_payment_available'] = false;
+        if (PaymentMode::driver($this->config) === 'wechat') {
+            try {
+                WechatSettings::fromConfig($this->config);
+                $data['wechat_payment_available'] = true;
+            } catch (\Throwable) {
+                // Missing credentials must not break browsing, orders, or the admin repair UI.
+            }
+        }
         try {
             $data['shop_name'] = (new ShopSettings($this->pdo))->get('shop_name', '独立商城');
         } catch (\Throwable) {
@@ -140,7 +154,7 @@ final class Kernel
                 return $this->page('install/form', [
                     'title' => '安装社区版',
                     'csrf' => $this->csrf->field(),
-                    'error' => 'The form expired. Try again.',
+                    'error' => '表单已过期，请刷新页面后重试。',
                     'checks' => \IndependentMall\Install\Environment::checks($this->config->root()),
                 ], 400);
             }
@@ -179,7 +193,7 @@ final class Kernel
                 return $this->page('admin/login', [
                     'title' => '管理员登录',
                     'csrf' => $this->csrf->field(),
-                    'error' => 'The form expired. Try again.',
+                    'error' => '表单已过期，请刷新页面后重试。',
                 ], 400);
             }
             $ok = $this->auth->login($request->post('identity'), $request->post('password'), $request->ip());
@@ -192,7 +206,7 @@ final class Kernel
                 return $this->page('admin/login', [
                     'title' => '管理员登录',
                     'csrf' => $this->csrf->field(),
-                    'error' => 'Sign-in failed or this account is not an administrator.',
+                    'error' => '登录失败，或此账户没有管理员权限。',
                 ], 401);
             }
             return Response::redirect('/admin');
@@ -311,9 +325,10 @@ final class Kernel
         return new CustomerAccounts(
             $this->pdo,
             new PasswordHasher(),
-            new NullMailer(),
+            MailerFactory::fromConfig($this->config),
             new AuditLogger($this->pdo),
             $this->auth,
+            ResetLink::fromConfig($this->config),
         );
     }
 
@@ -732,7 +747,7 @@ final class Kernel
             }
             if (trim($request->post('public_pem')) !== '') {
                 return $this->adminModulesPage(
-                    'License import no longer accepts a public key. Configure the vendor trust key separately, then paste only the signed license JSON.',
+                    '请先单独配置并核对发行方信任公钥，再仅导入签名许可证 JSON；许可证导入不能更换公钥。',
                     422,
                 );
             }
@@ -827,6 +842,7 @@ final class Kernel
 
     private function registerCommerceRoutes(): void
     {
+        \IndependentMall\Http\WechatRoutes::register($this);
         ShopFront::register($this);
     }
 }

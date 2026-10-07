@@ -21,6 +21,7 @@ final class Request
         private array $cookies,
         private array $server,
         private array $files = [],
+        private string $rawBody = '',
     ) {
     }
 
@@ -63,6 +64,7 @@ final class Request
             $cookies,
             $server,
             is_array($_FILES) ? $_FILES : [],
+            (string) file_get_contents('php://input', false, null, 0, 1048577),
         );
     }
 
@@ -104,5 +106,15 @@ final class Request
     public function ip(): string
     {
         return $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+
+    public function rawBody(): string
+    {
+        return $this->rawBody;
+    }
+
+    public function header(string $name): string
+    {
+        return $this->server['HTTP_' . strtoupper(str_replace('-', '_', $name))] ?? '';
     }
 }

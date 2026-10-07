@@ -6,10 +6,10 @@ $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBS
 <h1>检查更新</h1>
 <p>此页面只验证更新元数据，不会替换文件、执行 PHP 或下载远程安装程序。</p>
 <ul>
-    <li>未签名通道：<?= $e((string) $r['unsigned']) ?></li>
-    <li>签名通道：<?= $e((string) $r['signed']) ?></li>
+    <li>未签名通道：<?= $e(\IndependentMall\Support\Chinese::label($r['unsigned'])) ?></li>
+    <li>签名通道：<?= $e(str_starts_with((string) $r['signed'], 'failed:') ? '验证失败，请联系管理员。' : \IndependentMall\Support\Chinese::label($r['signed'])) ?></li>
     <li>版本：<?= $e((string) $r['version']) ?></li>
-    <li>SHA-256: <code><?= $e((string) $r['sha256']) ?></code></li>
+    <li>文件校验值（SHA-256）：<code><?= $e((string) $r['sha256']) ?></code></li>
     <li>是否已安装：<?= !empty($r['applied']) ? '是' : '否' ?></li>
 </ul>
 <p>要在你控制的服务器安装更新，请复制更新包，人工核对哈希后运行 <code>php bin/console update:apply</code>。</p>

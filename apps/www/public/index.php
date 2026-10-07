@@ -2,16 +2,23 @@
 
 declare(strict_types=1);
 
-$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$publicFile = __DIR__ . $uri;
-if ($uri !== '/' && is_file($publicFile)) {
-    return false;
-}
-
 $root = dirname(__DIR__);
 require dirname(__DIR__, 3) . '/vendor/autoload.php';
 
 use IndependentMall\Http\Request;
+use IndependentMall\Http\Response;
+use IndependentMall\Http\StaticAssets;
 use IndependentMall\OfficialSite\Site;
 
-Site::boot($root)->handle(Request::fromGlobals())->send();
+$request = Request::fromGlobals();
+$asset = $request->method() === 'GET' ? StaticAssets::response(__DIR__, $request->path()) : null;
+if ($asset !== null) {
+    $asset->send();
+    return;
+}
+try {
+    Site::boot($root)->handle($request)->send();
+} catch (Throwable $e) {
+    error_log('Official site request failed: ' . get_class($e));
+    Response::html('服务暂时不可用，请稍后重试或联系管理员。', 503)->send();
+}

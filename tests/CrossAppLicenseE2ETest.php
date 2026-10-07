@@ -226,7 +226,7 @@ final class CrossAppLicenseE2ETest extends TestCase
             'public_pem' => $pubPem,
         ], [], []));
         $this->assertSame(422, $withPem->status());
-        $this->assertStringContainsString('no longer accepts a public key', $withPem->body());
+        $this->assertStringContainsString('许可证导入不能更换公钥', $withPem->body());
         $this->assertFileDoesNotExist($communityRoot . '/var/license.json');
 
         $import = $kernel->handle(new Request('POST', '/admin/license', [], [
@@ -293,7 +293,7 @@ final class CrossAppLicenseE2ETest extends TestCase
             'license_json' => (string) json_encode($tampered),
         ], [], []));
         $this->assertSame(422, $bad->status());
-        $this->assertStringContainsString('left unchanged', $bad->body());
+        $this->assertStringContainsString('原有授权未被修改', $bad->body());
         $this->assertSame($goodLicenseOnDisk, (string) file_get_contents($communityRoot . '/var/license.json'));
         $this->assertSame($goodPemOnDisk, (string) file_get_contents($communityRoot . '/var/license-public.pem'));
         $this->assertTrue(FileLicenseGate::fromRoot($communityRoot)->allows(['storefront_notice']));
@@ -548,7 +548,8 @@ final class CrossAppLicenseE2ETest extends TestCase
 
         $paid = $kernel->handle(new Request('GET', '/orders/' . $om[1], [], [], [], []));
         $this->assertSame(200, $paid->status());
-        $this->assertStringContainsString('已完成', $paid->body());
+        $this->assertStringContainsString('已付款', $paid->body());
+        $this->assertStringContainsString('等待商家发货', $paid->body());
     }
 
     private function assertDoesNotLeakSecrets(string $haystack, string $privatePem): void

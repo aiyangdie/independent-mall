@@ -57,6 +57,10 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
 
     public function testWwwDownloadThenCommunityTrustKeyImportEnableOverHttp(): void
     {
+        $assetCookies = [];
+        [$assetStatus, , $css] = $this->http('GET', $this->communityBase() . '/assets/app.css', $assetCookies);
+        $this->assertSame(200, $assetStatus, 'the actual front controller must serve local CSS');
+        $this->assertStringContainsString('.site-header', $css);
         $wwwCookies = [];
         $email = 'http-e2e-' . bin2hex(random_bytes(3)) . '@example.invalid';
         $password = 'correct-horse-battery';
@@ -143,7 +147,7 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
             'public_pem' => $pem,
         ]);
         $this->assertSame(422, $st);
-        $this->assertStringContainsString('no longer accepts a public key', $reject);
+        $this->assertStringContainsString('许可证导入不能更换公钥', $reject);
 
         [$st, , $modules] = $this->http('GET', $this->communityBase() . '/admin/modules', $adminCookies);
         [$st] = $this->http('POST', $this->communityBase() . '/admin/license', $adminCookies, [
@@ -189,7 +193,7 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
             'license_json' => (string) json_encode($tampered),
         ]);
         $this->assertSame(422, $st);
-        $this->assertStringContainsString('unchanged', $bad);
+        $this->assertStringContainsString('原有授权未被修改', $bad);
         $this->assertSame($goodDoc, (string) file_get_contents($this->communityRoot . '/var/license.json'));
         $this->assertSame($goodPem, (string) file_get_contents($this->communityRoot . '/var/license-public.pem'));
 
@@ -248,7 +252,8 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
         $this->assertSame(302, $st);
         [$st, , $paid] = $this->http('GET', $this->communityBase() . '/orders/' . $om[1], $shopCookies);
         $this->assertSame(200, $st);
-        $this->assertStringContainsString('已完成', $paid);
+        $this->assertStringContainsString('已付款', $paid);
+        $this->assertStringContainsString('等待商家发货', $paid);
     }
 
     private function communityBase(): string
@@ -273,22 +278,11 @@ final class HttpCrossAppLicenseE2ETest extends TestCase
         if (is_dir($this->repo . '/public/assets')) {
             $this->copyTree($this->repo . '/public/assets', $this->communityRoot . '/public/assets');
         }
-        $repoExport = var_export($this->repo, true);
-        file_put_contents($this->communityRoot . '/public/index.php', <<<PHP
-<?php
-declare(strict_types=1);
-\$uri = parse_url(\$_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-\$file = __DIR__ . \$uri;
-if (\$uri !== '/' && is_file(\$file)) {
-    return false;
-}
-\$repo = {$repoExport};
-\$root = dirname(__DIR__);
-require \$repo . '/vendor/autoload.php';
-use IndependentMall\\Kernel;
-use IndependentMall\\Http\\Request;
-Kernel::boot(\$root)->handle(Request::fromGlobals())->send();
-PHP);
+        // Use the shipped entry point, not a test-only router that can hide production bugs.
+        copy($this->repo . '/public/index.php', $this->communityRoot . '/public/index.php');
+        mkdir($this->communityRoot . '/vendor');
+        file_put_contents($this->communityRoot . '/vendor/autoload.php', '<?php require '
+            . var_export($this->repo . '/vendor/autoload.php', true) . ';');
         $installer = new Installer($this->communityRoot, $this->communityRoot . '/database/migrations');
         $installer->install([
             'admin_email' => 'ops@http-e2e.invalid',
@@ -345,6 +339,11 @@ PHP);
         if ($port === $this->communityPort && is_file($this->communityRoot . '/.env')) {
             $env = (string) file_get_contents($this->communityRoot . '/.env');
             $env = preg_replace('/^APP_URL=.*$/m', 'APP_URL=http://127.0.0.1:' . $port, $env) ?? $env;
+            // Installer writes production; local HTTP reset links need a development APP_ENV.
+            $env = preg_replace('/^APP_ENV=.*$/m', 'APP_ENV=testing', $env) ?? $env;
+            if (!preg_match('/^PAYMENT_DRIVER=/m', $env)) {
+                $env .= "PAYMENT_DRIVER=fake\n";
+            }
             file_put_contents($this->communityRoot . '/.env', $env);
         }
         $log = sys_get_temp_dir() . '/im-http-srv-' . $port . '-' . bin2hex(random_bytes(2)) . '.log';

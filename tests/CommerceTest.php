@@ -157,7 +157,7 @@ final class CommerceTest extends TestCase
         $this->assertNotEmpty($tokens);
         $this->pay->notify($fields);
         $paid = $this->checkout->byId((int) $order['id']);
-        $this->assertSame('completed', $paid['status']);
+        $this->assertSame('paid', $paid['status'], 'physical orders must wait for shipment and customer receipt');
         $file = $this->digital->download($tokens[0]);
         $this->assertSame('PDF-BYTES', $file['body']);
 

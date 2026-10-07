@@ -205,7 +205,7 @@ final class InstallerTest extends TestCase
             }
             copy($this->root . $from, $target);
         }
-        foreach (['layout.php', 'store/home.php', 'store/search.php', 'store/category.php', 'store/not-found.php', 'install/form.php', 'install/locked.php'] as $rel) {
+        foreach (['layout.php', 'store/home.php', 'store/product-grid.php', 'store/search.php', 'store/category.php', 'store/not-found.php', 'install/form.php', 'install/locked.php'] as $rel) {
             $target = $dest . '/templates/' . $rel;
             if (!is_dir(dirname($target))) {
                 mkdir(dirname($target), 0775, true);

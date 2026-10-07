@@ -10,6 +10,9 @@ final class Money
     {
         $major = intdiv($minor, 100);
         $cents = abs($minor % 100);
-        return sprintf('%s %d.%02d', $currency, $major, $cents);
+        $currency = strtoupper(trim($currency));
+        $prefix = $currency === 'CNY' ? '¥' : $currency . ' ';
+        // Keep the calculation in integers, including negative sub-yuan amounts.
+        return ($minor < 0 ? '-' : '') . $prefix . sprintf('%d.%02d', abs($major), $cents);
     }
 }

@@ -64,6 +64,8 @@ final class DigitalFulfillment
      */
     public function download(string $rawToken): array
     {
+        $this->pdo->beginTransaction();
+        try {
         $hash = hash_hmac('sha256', $rawToken, $this->tokenSecret);
         $stmt = $this->pdo->prepare(
             'SELECT d.*, a.label, a.body, oi.order_id FROM digital_deliveries d
@@ -86,10 +88,47 @@ final class DigitalFulfillment
         if ((int) $row['download_count'] >= (int) $row['max_downloads']) {
             throw new DomainException('Download limit reached.');
         }
-        $this->pdo->prepare('UPDATE digital_deliveries SET download_count = download_count + 1 WHERE id = :id')
-            ->execute(['id' => $row['id']]);
+        $consume = $this->pdo->prepare("UPDATE digital_deliveries SET download_count = download_count + 1 WHERE id = :id AND token_hash = :h AND revoked = 0 AND expires_at >= :now AND download_count < max_downloads AND EXISTS (SELECT 1 FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.id = digital_deliveries.order_item_id AND o.status IN ('paid','fulfilling','completed'))");
+        $consume->execute(['id' => $row['id'], 'h' => $hash, 'now' => gmdate('c')]);
+        if ($consume->rowCount() !== 1) {
+            throw new DomainException('下载链接已失效或下载次数已用完。');
+        }
         $this->audit->record((int) $order['user_id'], 'digital.download', 'delivery', (string) $row['id'], []);
+        $this->pdo->commit();
         return ['label' => (string) $row['label'], 'body' => (string) $row['body']];
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** Rotate a customer's link, without replenishing its lifespan or download allowance. */
+    public function renewLink(int $userId, int $orderId, int $deliveryId): string
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare('UPDATE orders SET updated_at = updated_at WHERE id = :id')->execute(['id' => $orderId]);
+            $order = $this->checkout->owned($userId, $orderId);
+            if (!in_array($order['status'], ['paid', 'fulfilling', 'completed'], true)) {
+                throw new DomainException('订单尚未付款或正在处理退款，不能获取下载链接。');
+            }
+            $raw = bin2hex(random_bytes(24));
+            $stmt = $this->pdo->prepare('UPDATE digital_deliveries SET token_hash = :h WHERE id = :id AND revoked = 0 AND expires_at >= :now AND download_count < max_downloads AND order_item_id IN (SELECT id FROM order_items WHERE order_id = :o)');
+            $stmt->execute(['h' => hash_hmac('sha256', $raw, $this->tokenSecret), 'id' => $deliveryId, 'now' => gmdate('c'), 'o' => $orderId]);
+            if ($stmt->rowCount() !== 1) {
+                throw new DomainException('交付物不存在、已过期或下载次数已用完。');
+            }
+            $this->audit->record($userId, 'digital.link_renewed', 'delivery', (string) $deliveryId);
+            $this->pdo->commit();
+            return $raw;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /**

@@ -31,12 +31,7 @@ final class ProductCatalog
      */
     public function storefrontProducts(): array
     {
-        $sql = "SELECT p.*, c.name AS category_name,
-                       (SELECT MIN(v.price_minor) FROM product_variants v WHERE v.product_id = p.id AND v.status = 'active') AS price_minor,
-                       (SELECT v.currency FROM product_variants v WHERE v.product_id = p.id AND v.status = 'active' ORDER BY v.price_minor, v.id LIMIT 1) AS currency,
-                       (SELECT i.storage_key FROM product_images i WHERE i.product_id = p.id ORDER BY i.id LIMIT 1) AS image_key
-                FROM products p JOIN categories c ON c.id = p.category_id
-                WHERE p.status = 'active' ORDER BY p.id DESC";
+        $sql = $this->storefrontSelect() . " ORDER BY p.id DESC";
         return $this->pdo->query($sql)->fetchAll() ?: [];
     }
 
@@ -47,13 +42,11 @@ final class ProductCatalog
     {
         $query = trim($query);
         if ($query === '') {
-            return [];
+            return $this->storefrontProducts();
         }
         $like = '%' . $query . '%';
         $stmt = $this->pdo->prepare(
-            "SELECT p.*, c.name AS category_name FROM products p
-             JOIN categories c ON c.id = p.category_id
-             WHERE p.status = 'active' AND (p.name LIKE :q OR p.summary LIKE :q2)
+            $this->storefrontSelect() . " AND (p.name LIKE :q OR p.summary LIKE :q2)
              ORDER BY p.id DESC"
         );
         $stmt->execute(['q' => $like, 'q2' => $like]);
@@ -77,12 +70,20 @@ final class ProductCatalog
     public function productsInCategory(int $categoryId): array
     {
         $stmt = $this->pdo->prepare(
-            "SELECT p.*, c.name AS category_name FROM products p
-             JOIN categories c ON c.id = p.category_id
-             WHERE p.status = 'active' AND p.category_id = :c ORDER BY p.id DESC"
+            $this->storefrontSelect() . " AND p.category_id = :c ORDER BY p.id DESC"
         );
         $stmt->execute(['c' => $categoryId]);
         return $stmt->fetchAll() ?: [];
+    }
+
+    private function storefrontSelect(): string
+    {
+        return "SELECT p.*, c.name AS category_name,
+                       (SELECT MIN(v.price_minor) FROM product_variants v WHERE v.product_id = p.id AND v.status = 'active') AS price_minor,
+                       (SELECT v.currency FROM product_variants v WHERE v.product_id = p.id AND v.status = 'active' ORDER BY v.price_minor, v.id LIMIT 1) AS currency,
+                       (SELECT i.storage_key FROM product_images i WHERE i.product_id = p.id ORDER BY i.id LIMIT 1) AS image_key
+                FROM products p JOIN categories c ON c.id = p.category_id
+                WHERE p.status = 'active' AND c.status = 'active'";
     }
 
     public function createCategory(string $name, string $slug): int

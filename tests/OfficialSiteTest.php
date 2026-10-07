@@ -64,7 +64,7 @@ final class OfficialSiteTest extends TestCase
         $this->assertStringContainsString('/legal/disclaimer', $pricing->body());
         $this->assertStringContainsString('演示操作流程', $pricing->body());
         $this->assertStringContainsString('演示购买', $pricing->body());
-        $this->assertStringContainsString('fake_renewed', $pricing->body());
+        $this->assertStringContainsString('演示续费完成', $pricing->body());
         $this->assertStringContainsString('/admin/license/trust-key', $pricing->body());
         $this->assertStringContainsString('/admin/license', $pricing->body());
         $this->assertStringContainsString('config/license-public.pem', $pricing->body());
@@ -124,13 +124,13 @@ final class OfficialSiteTest extends TestCase
         $mtime = filemtime($artifact);
         $page = $this->site->handle(new Request('GET', '/account/updates', [], [], [], []));
         $this->assertSame(200, $page->status());
-        $this->assertStringContainsString('verified_not_applied', $page->body());
-        $this->assertStringContainsString('refused_auto_install', $page->body());
+        $this->assertStringContainsString('验签通过，尚未安装', $page->body());
+        $this->assertStringContainsString('已拒绝自动安装', $page->body());
         $this->assertStringContainsString('是否已安装：否', $page->body());
         $this->assertSame($before, (string) file_get_contents($artifact));
         $this->assertSame($mtime, filemtime($artifact));
         $account = $this->site->handle(new Request('GET', '/account', [], [], [], []));
-        $this->assertStringContainsString('inspect_updates', $account->body());
+        $this->assertStringContainsString('检查更新', $account->body());
     }
 
     public function testInspectUpdateFailuresDoNotMutateArtifactsOrCommunity(): void
@@ -291,7 +291,7 @@ final class OfficialSiteTest extends TestCase
         file_put_contents($pemPath, $pemDl->body());
         $verifyGate = new FileLicenseGate($docPath, $pemPath, new FrozenClock(time()));
         $this->assertTrue($verifyGate->allows(['storefront_notice']));
-        $this->assertStringContainsString('license_document_download', $this->site->handle(new Request('GET', '/account', [], [], [], []))->body());
+        $this->assertStringContainsString('下载签名授权文件', $this->site->handle(new Request('GET', '/account', [], [], [], []))->body());
         $foreign = $this->site->handle(new Request('GET', '/account/license.json', ['id' => 'lic_not_yours'], [], [], []));
         $this->assertSame(400, $foreign->status());
 
@@ -347,7 +347,7 @@ final class OfficialSiteTest extends TestCase
         $renewedPage = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertStringContainsString('演示续费已记录', $renewedPage->body());
         $this->assertStringContainsString('commercial-sample-notice-renew', $renewedPage->body());
-        $this->assertStringContainsString('fake_renew', $renewedPage->body());
+        $this->assertStringContainsString('演示续费', $renewedPage->body());
         $this->assertStringContainsString('演示续费完成', $renewedPage->body());
         $this->assertMatchesRegularExpression('/授权订单 ord_[a-f0-9]+/u', $renewedPage->body());
         preg_match('/到期时间 <code>([^<]+)<\/code>/', $renewedPage->body(), $expAfter);
@@ -399,14 +399,14 @@ final class OfficialSiteTest extends TestCase
         $answered = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertStringContainsString('状态 <code>已回复</code>', $answered->body());
         $this->assertStringContainsString('Fake staff: draft invoice noted.', $answered->body());
-        $this->assertStringContainsString('ticket_answer', $answered->body());
+        $this->assertStringContainsString('回复工单', $answered->body());
         $this->site->handle(new Request('POST', '/account/ticket/close', [], [
             '_csrf' => $token,
             'ticket_id' => $tid[1],
         ], [], []));
         $closed = $this->site->handle(new Request('GET', '/account', [], [], [], []));
         $this->assertStringContainsString('状态 <code>已关闭</code>', $closed->body());
-        $this->assertStringContainsString('ticket_close', $closed->body());
+        $this->assertStringContainsString('关闭工单', $closed->body());
         $reclose = $this->site->handle(new Request('POST', '/account/ticket/close', [], [
             '_csrf' => $token,
             'ticket_id' => $tid[1],
@@ -435,7 +435,7 @@ final class OfficialSiteTest extends TestCase
         ], [], []));
         $afterRevoke = $this->site->handle(new Request('GET', '/account/download', ['token' => $dl2[1]], [], [], []));
         $this->assertSame(400, $afterRevoke->status());
-        $this->assertStringContainsString('download_token_revoke', $this->site->handle(new Request('GET', '/account', [], [], [], []))->body());
+        $this->assertStringContainsString('撤销下载链接', $this->site->handle(new Request('GET', '/account', [], [], [], []))->body());
 
         $bad = $this->site->handle(new Request('GET', '/account/download', ['token' => '../sample-notice'], [], [], []));
         $this->assertSame(400, $bad->status());

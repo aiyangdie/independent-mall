@@ -30,7 +30,7 @@ ob_start();
         <label>网址标识 <input name="slug" required pattern="[a-z0-9-]+" placeholder="例如 ceramic-mug"></label>
         <label>商品摘要 <input name="summary"></label>
         <label>商品详情 <textarea name="description"></textarea></label>
-        <label>SKU <input name="sku" required></label>
+        <label>规格编码 <input name="sku" required placeholder="每个商品规格使用唯一编码"></label>
         <label>规格名称 <input name="variant_title" value="标准款"></label>
         <label>价格（分） <input name="price_minor" type="number" min="0" required><small class="muted">例如 1990 表示 19.90 元</small></label>
         <label>初始库存 <input name="on_hand" type="number" min="0" value="0"></label>

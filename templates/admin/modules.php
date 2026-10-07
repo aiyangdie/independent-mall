@@ -20,7 +20,7 @@ ob_start();
     <div class="card">
         <h2>软件商信任公钥</h2>
         <?php if (!empty($trust['configured'])): ?>
-            <p>信任公钥已配置（<?= $e((string) ($trust['source'] ?? '')) ?>）。
+            <p>信任公钥已配置（<?= $e(\IndependentMall\Support\Chinese::label($trust['source'] ?? 'unknown')) ?>）。
                 指纹：<code><?= $e((string) ($trust['fingerprint'] ?? '')) ?></code>。
                 导入授权时只使用此公钥验证，授权文件不能替换公钥。</p>
             <?php if (!empty($trust['packaged_locked'])): ?>
