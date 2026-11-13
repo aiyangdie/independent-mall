@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/covers/02-independent-mall.jpg" alt="independent-mall 项目封面" width="100%"></p>
+
 # Independent Mall (temporary name)
 
 Community Edition of a general-purpose goods and services shop. It is not a continuation of any previous branded package, and it does not require a license server to start.
